@@ -411,11 +411,11 @@ const { paletteToBlob, timestampName, downloadBlob, canvasToBlob } = (() => {
   return { paletteToBlob, timestampName, downloadBlob, canvasToBlob };
 })();
 
-/* アイコン（JS が組み立てる DOM で使う分だけ）。24px グリッド・線 1.75px・stroke="currentColor"。 */
+/* アイコン（JS が組み立てる DOM で使う分だけ）。24px グリッド・線 2px・stroke="currentColor"（Sandbox No.12 のアイコン）。 */
 const ICON_PATHS = {
-  trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
 };
-const icon = (name, opts) => '<svg class="yt-icon" width="' + opts.size + '" height="' + opts.size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + ICON_PATHS[name] + "</svg>";
+const icon = (name, opts) => '<svg width="' + opts.size + '" height="' + opts.size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + ICON_PATHS[name] + "</svg>";
 
 /* 以下、DOM 配線。
    画像の読み込みと canvas、スポイト、頻出色、現在色と HSV スライダー、パレット（localStorage）、画像への合成（色を乗せる / 乗せた層を外す）。
@@ -516,9 +516,9 @@ init(function () {
     root.className = "cp-chip";
     const sw = document.createElement("button");
     sw.type = "button";
-    sw.className = "cp-chip__sw";
+    sw.className = "cp-chip__sw tip";
     sw.style.background = hex;
-    sw.title = "現在色にする";
+    sw.dataset.tip = "現在色にする";
     sw.setAttribute("aria-label", hex + " を現在色にする");
     sw.addEventListener("click", () => setCurrentRgb(C.parseHex(hex)));
     const label = document.createElement("span");
@@ -546,7 +546,7 @@ init(function () {
     el.cp_s.style.background = `linear-gradient(to right, ${at(state.hsv.h, 0, state.hsv.v)}, ${at(state.hsv.h, 100, state.hsv.v)})`;
     el.cp_v.style.background = `linear-gradient(to right, ${at(state.hsv.h, state.hsv.s, 0)}, ${at(state.hsv.h, state.hsv.s, 100)})`;
     el.cp_hold.disabled = hasColor(hex);
-    el.cp_hold.querySelector(".yt-btn__text").textContent = el.cp_hold.disabled ? "追加済み" : "パレットに追加";
+    el.cp_hold.querySelector(".btn__text").textContent = el.cp_hold.disabled ? "追加済み" : "パレットに追加";
   };
 
   const renderPalette = function () {
@@ -555,7 +555,7 @@ init(function () {
       const hex = entry.hex;
       const name = document.createElement("input");
       name.type = "text";
-      name.className = "cp-chip__name";
+      name.className = "in cp-chip__name";
       name.placeholder = "名前";
       name.maxLength = C.MAX_NAME_LEN;
       name.spellcheck = false;
@@ -570,9 +570,10 @@ init(function () {
       name.addEventListener("blur", () => { name.value = entry.name; });
       const x = document.createElement("button");
       x.type = "button";
-      x.className = "yt-iconbtn yt-iconbtn--sm cp-chip__x";
+      x.className = "btn icon tip cp-chip__x";
+      x.dataset.tip = "削除";
+      x.dataset.align = "end";
       x.innerHTML = icon("trash", { size: 16 });
-      x.title = "削除";
       x.setAttribute("aria-label", hex + " を削除");
       x.addEventListener("click", () => {
         state.palette = state.palette.filter((p) => p.hex !== hex);
@@ -900,9 +901,9 @@ init(function () {
     const v = (name, fallback) => (css.getPropertyValue(name) || "").trim() || fallback;
     try {
       const blob = await paletteToBlob(state.palette, {
-        bg: v("--bg", "#f7f5f2"),
-        text: v("--ink", "#26221f"),
-        line: v("--line", "#e6e1db"),
+        bg: v("--bg", "#f7f7f8"),
+        text: v("--text", "#17181c"),
+        line: v("--border", "#e3e5e8"),
         fontBase: v("--font-sans", "sans-serif"),
         fontMono: v("--font-mono", "monospace"),
       });
@@ -913,7 +914,7 @@ init(function () {
   });
 
   let clearArmed = null;
-  const clearText = el.cp_palette_clear.querySelector(".yt-btn__text");
+  const clearText = el.cp_palette_clear.querySelector(".btn__text");
   el.cp_palette_clear.addEventListener("click", () => {
     if (clearArmed) {
       clearTimeout(clearArmed);
