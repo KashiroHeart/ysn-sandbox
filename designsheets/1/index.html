@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  デザインシートのテンプレート（DS #1）。このページ自体は常に空のまま保つ。
+
+  新しいシートの作り方:
+    1. designsheets/1/ を designsheets/<N>/ に丸ごと複製する（N は 2 から欠番なし）
+    2. このファイルの「/designsheets/1/」を「/designsheets/<N>/」に、<title> を「DS #<N> <タイトル> | sandbox」に書き換える
+    3. main.js の localStorage キー「ds-1-theme」を「ds-<N>-theme」に書き換える
+    4. main.css のトークン値（:root とダーク）を、そのシートのデザインに合わせて書き換える
+    5. 下の空欄を埋める。各表の空行の直前に書き方の見本をコメントで置いてある。行は必要なだけ増やし、使わない group 行は消してよい
+    6. 書き終わったらこのコメントは消す
+  トップページの一覧には載せない。
+-->
+<title>DS #1 テンプレート | sandbox</title>
+<link rel="stylesheet" href="/assets/examples-header.css">
+<script src="/assets/examples-header.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/designsheets/1/main.css">
+</head>
+<body>
+<header>
+  <!-- ロゴの 2 文字と、シートの英語名 -->
+  <div class="logo"><div class="logo-mark"></div></div>
+  <div class="spacer"></div>
+  <!-- 出典などの短い注記。無ければ消す -->
+  <span class="hint"></span>
+  <button class="btn icon tip" id="themeBtn" type="button" data-tip="テーマを切り替え" data-pos="bottom" data-align="end" aria-label="テーマを切り替え">
+    <svg id="themeIcon" viewBox="0 0 24 24" aria-hidden="true"></svg>
+  </button>
+</header>
+
+<nav class="toc" aria-label="目次">
+  <a href="#colors"><span class="n">01</span>色</a>
+  <a href="#type"><span class="n">02</span>文字</a>
+  <a href="#elements"><span class="n">03</span>フォーム要素</a>
+  <a href="#extras"><span class="n">04</span>追加要素</a>
+  <a href="#icons"><span class="n">05</span>アイコン</a>
+  <a href="#tone"><span class="n">06</span>語調</a>
+</nav>
+
+<main>
+  <div class="intro">
+    <!-- シートの名前と、何をまとめたシートかを 1〜2 文で -->
+    <h1></h1>
+    <p></p>
+  </div>
+
+  <!-- 01 色 -->
+  <section class="block" id="colors">
+    <h2><span class="n">01</span>色</h2>
+    <p></p>
+    <div class="pane">
+      <div class="pane-head">Color tokens</div>
+      <div class="scroll">
+        <table class="tbl tbl-colors">
+          <thead><tr><th>役割</th><th>用途</th><th>変数</th><th>ライト</th><th>ダーク</th></tr></thead>
+          <tbody>
+            <!--
+              行の書き方（地の色）:
+              <tr>
+                <th>背景色</th><td>ページ全体の地</td><td><code>--bg</code></td>
+                <td><div class="sw"><span class="chip" style="background:#……"></span><span class="hex">#……</span></div></td>
+                <td><div class="sw"><span class="chip" style="background:#……"></span><span class="hex">#……</span></div></td>
+              </tr>
+              文字色は chip に Aa を入れ、地を background・文字を color にする:
+                <span class="chip" style="background:#……;color:#……">Aa</span>
+              変数が 2 つある行は <code> を <br> でつなぎ、2 つ目の値を <span class="hex">#……<small>#……</small></span> と書く
+              役割の補足は <th>面<span class="sub">補助</span></th>
+            -->
+            <tr class="group"><th colspan="5">ベースカラー</th></tr>
+            <tr><th></th><td></td><td></td><td></td><td></td></tr>
+            <tr class="group"><th colspan="5">メインカラー</th></tr>
+            <tr><th></th><td></td><td></td><td></td><td></td></tr>
+            <tr class="group"><th colspan="5">アクセントカラー A（操作の重要度）</th></tr>
+            <tr><th></th><td></td><td></td><td></td><td></td></tr>
+            <tr class="group"><th colspan="5">アクセントカラー B（状態の通知）</th></tr>
+            <tr><th></th><td></td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 文字 -->
+  <section class="block" id="type">
+    <h2><span class="n">02</span>文字</h2>
+    <p></p>
+    <div class="pane">
+      <div class="pane-head">Typography</div>
+      <div class="scroll">
+        <table class="tbl tbl-type">
+          <thead><tr><th>用途</th><th>フォント</th><th>サイズ / 行送り</th><th>ウェイト</th><th>装飾</th><th>見本</th></tr></thead>
+          <tbody>
+            <!--
+              行の書き方:
+              <tr><th>テキスト</th><td>Inter, Noto Sans JP</td><td class="mono">14px / 1.5</td><td>400</td><td>—</td><td><span class="t-text">見本の文</span></td></tr>
+              見本のクラス（t-text / t-sub / t-label / t-num / t-en / t-ja / t-code / t-btn-en / t-btn-ja）は main.css にある
+            -->
+            <tr><th></th><td></td><td class="mono"></td><td></td><td></td><td></td></tr>
+            <tr class="group"><th colspan="6">input / textarea</th></tr>
+            <tr><th></th><td></td><td class="mono"></td><td></td><td></td><td></td></tr>
+            <tr class="group"><th colspan="6">button</th></tr>
+            <tr><th></th><td></td><td class="mono"></td><td></td><td></td><td></td></tr>
+            <tr class="group"><th colspan="6">その他</th></tr>
+            <tr><th></th><td></td><td class="mono"></td><td></td><td></td><td></td></tr>
+            <tr class="group"><th colspan="6">動的表示</th></tr>
+            <!--
+              エラー / 警告 / 情報の見本:
+              <span class="msg err" role="alert"><svg viewBox="0 0 24 24" aria-hidden="true">…</svg>文言</span>
+              （warn / info は role="status"）
+            -->
+            <tr><th></th><td></td><td class="mono"></td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 フォーム要素 -->
+  <section class="block" id="elements">
+    <h2><span class="n">03</span>フォーム要素</h2>
+    <p></p>
+    <div class="pane">
+      <div class="pane-head">States</div>
+      <div class="scroll">
+        <table class="tbl tbl-el">
+          <thead><tr><th>要素</th><th>通常 (:enabled)</th><th>:disabled</th><th>:invalid</th></tr></thead>
+          <tbody>
+            <!--
+              見本は実際の要素で置く（触って確かめられるように）。
+              <tr>
+                <th>type="text"</th>
+                <td><input class="in" type="text" value="…" aria-label="…（通常）"></td>
+                <td><input class="in" type="text" value="…" disabled aria-label="…（無効）"></td>
+                <td><input class="in" type="text" value="…" pattern="…" aria-label="…（不正）"><span class="meta">pattern 不一致</span></td>
+              </tr>
+              起きない状態は <span class="na">発生しない</span><span class="meta">理由</span>
+              要素の補足は <th>type="checkbox"<span class="sub">:checked</span></th>
+            -->
+            <tr class="group"><th colspan="4">input</th></tr>
+            <tr><th></th><td></td><td></td><td></td></tr>
+            <tr class="group"><th colspan="4">textarea</th></tr>
+            <tr><th></th><td></td><td></td><td></td></tr>
+            <tr class="group"><th colspan="4">button</th></tr>
+            <tr><th></th><td></td><td></td><td></td></tr>
+            <tr class="group"><th colspan="4">select</th></tr>
+            <tr><th></th><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 追加要素 -->
+  <section class="block" id="extras">
+    <h2><span class="n">04</span>追加要素</h2>
+    <div class="pane">
+      <div class="pane-head">Toggle (二値選択)</div>
+      <div class="scroll">
+        <table class="tbl tbl-el">
+          <thead><tr><th>種類</th><th>OFF / 左</th><th>ON / 右</th><th>:disabled</th></tr></thead>
+          <tbody>
+            <!--
+              行の書き方:
+              <tr>
+                <th>スイッチ<span class="sub">使いどころ</span></th>
+                <td><label class="switch"><input type="checkbox"><span></span>ラベル</label></td>
+                <td><label class="switch"><input type="checkbox" checked><span></span>ラベル</label></td>
+                <td><label class="switch"><input type="checkbox" checked disabled><span></span>ラベル</label></td>
+              </tr>
+              セグメントは .seg、アイコントグルは <button class="btn icon tip js-press" aria-pressed="false"> の形
+            -->
+            <tr><th></th><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pane">
+      <div class="pane-head">Tooltip</div>
+      <div class="scroll">
+        <table class="tbl tbl-el">
+          <thead><tr><th>種類</th><th>表示例</th><th>実物（hover / focus）</th><th>使いどころ</th></tr></thead>
+          <tbody>
+            <!--
+              行の書き方:
+              <tr>
+                <th>名前のみ</th>
+                <td><div class="tip-cell"><span class="bubble">名前</span><button class="btn icon" type="button" tabindex="-1" aria-hidden="true"><svg viewBox="0 0 24 24">…</svg></button></div></td>
+                <td><button class="btn icon tip" type="button" data-tip="名前" aria-label="名前"><svg viewBox="0 0 24 24" aria-hidden="true">…</svg></button></td>
+                <td>使いどころ</td>
+              </tr>
+              下向きは .tip-cell.bottom と data-pos="bottom"、折り返す説明は .tip-cell.wide と .bubble.wrap
+            -->
+            <tr><th></th><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- 表の下に補足を書くなら: <div class="pane-body note">…</div> -->
+    </div>
+  </section>
+
+  <!-- 05 アイコン -->
+  <section class="block" id="icons">
+    <h2><span class="n">05</span>使用する SVG アイコン</h2>
+    <!-- 方針の書き方: <div><b>項目名</b><span>方針の文</span></div> を必要なだけ並べる -->
+    <div class="policy">
+      <div><b></b><span></span></div>
+    </div>
+    <div class="pane">
+      <div class="pane-head">Icons</div>
+      <div class="scroll">
+        <table class="tbl tbl-icons">
+          <thead><tr><th>アイコン</th><th>名前</th><th>意図</th><th>使う場面</th></tr></thead>
+          <tbody>
+            <!--
+              行の書き方（同じ SVG を通常と .lg の 2 つ並べる。色付きは .icon-pair に style="color:var(--err)" など）:
+              <tr><td><div class="icon-pair"><svg viewBox="0 0 24 24"><path d="…"/></svg><svg class="lg" viewBox="0 0 24 24"><path d="…"/></svg></div></td><th>名前</th><td>意図</td><td>使う場面</td></tr>
+            -->
+            <tr><td><div class="icon-pair"></div></td><th></th><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 語調 -->
+  <section class="block" id="tone">
+    <h2><span class="n">06</span>テキストサンプル（語調）</h2>
+    <!-- 方針の書き方: <div><b>項目名</b><span>方針の文</span></div> を必要なだけ並べる -->
+    <div class="policy">
+      <div><b></b><span></span></div>
+    </div>
+    <div class="pane">
+      <div class="pane-head">Tone of voice</div>
+      <div class="scroll">
+        <table class="tbl tbl-tone">
+          <thead><tr><th>項目</th><th>方針</th><th>例</th></tr></thead>
+          <tbody>
+            <!--
+              行の書き方:
+              <tr><th>ラベル<span class="sub">input / textarea</span></th><td>方針</td><td><ul><li><q>例</q> <q>例</q></li></ul></td></tr>
+            -->
+            <tr><th></th><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<!-- 出典があれば「 — 出典: <a href="…" style="color:var(--accent)">…</a>」を続ける -->
+<footer>sandbox DS #1</footer>
+
+<script src="/designsheets/1/main.js"></script>
+</body>
+</html>

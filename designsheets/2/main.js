@@ -4,10 +4,10 @@ const MOON = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
 function store(k, v) { try { if (v !== undefined) localStorage.setItem(k, v); return localStorage.getItem(k); } catch { return null; } }
 function isDark() { const t = document.documentElement.dataset.theme; return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
 function paintTheme() { $('themeIcon').innerHTML = isDark() ? SUN : MOON; }
-const saved = store('ds12-theme'); if (saved) document.documentElement.dataset.theme = saved;
+const saved = store('ds-2-theme'); if (saved) document.documentElement.dataset.theme = saved;
 paintTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paintTheme);
-$('themeBtn').onclick = () => { const t = isDark() ? 'light' : 'dark'; document.documentElement.dataset.theme = t; store('ds12-theme', t); paintTheme(); };
+$('themeBtn').onclick = () => { const t = isDark() ? 'light' : 'dark'; document.documentElement.dataset.theme = t; store('ds-2-theme', t); paintTheme(); };
 
 // アイコントグルの見本: aria-pressed を切り替える
 document.querySelectorAll('.js-press').forEach(b => {

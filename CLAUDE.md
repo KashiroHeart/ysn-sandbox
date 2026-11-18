@@ -12,9 +12,13 @@ yoshina.moe 系のサイト（`KashiroHeart/yoshinamoego`）と同じサーバ�
   - `/no.1` → `examples/1/index.html`、`/no.1/main.js` → `examples/1/main.js`、`/no.1/foo` → `examples/1/foo.html`
 - 内部リンクも拡張子なし・ルート相対で書く（`/about`、`/no.1`、`/no.1/foo`）。
   `/no.1` は末尾スラッシュなしなので、相対パス（`main.css`）は `/main.css` に解決されてしまう。必ず `/no.1/main.css` と書く
-- **example 同士で CSS / JS を共有しない。** 各 example は自分のディレクトリの中で完結させる。
+- designsheet は `designsheets/<N>/` に置き、`/designsheets/<N>` で見せる（URL とディレクトリが同じ形）。
+  - `/designsheets/2` → `designsheets/2/index.html`、`/designsheets/2/main.css` → `designsheets/2/main.css`
+  - こちらも末尾スラッシュなしなので、読み込みは `/designsheets/2/main.css` のようにルート相対で書く
+- **example 同士・designsheet 同士・example と designsheet の間で CSS / JS を共有しない。** 各ページは自分のディレクトリの中で完結させる。
   共有してよいのは `assets/examples-header.*`（共通ヘッダー）だけ
-- `assets/site.css` / `assets/site.js` はトップと about 専用。example からは読み込まない
+- `assets/site.css` / `assets/site.js` はトップと about 専用。example・designsheet からは読み込まない
+- designsheets へはトップページから導線を作らない（一覧に載せない・`/designsheets` 自体のページも作らない）。意図して隠している
 
 ## 構成
 
@@ -25,9 +29,11 @@ yoshina.moe 系のサイト（`KashiroHeart/yoshinamoego`）と同じサーバ�
 | `examples/<N>/index.html` | `/no.<N>` | 試作ページ。番号は 1 から欠番なしで増やす |
 | `examples/<N>/main.{css,js}` | `/no.<N>/main.{css,js}` | その試作ページのスタイルとスクリプト |
 | `examples/<N>/<name>.html` など | `/no.<N>/<name>` | 複数ページの試作なら、2 枚目以降やその他のファイルもこのディレクトリに置く |
+| `designsheets/1/` | `/designsheets/1` | デザインシートのテンプレート。中身は空のまま保つ |
+| `designsheets/<N>/index.html`・`main.{css,js}` | `/designsheets/<N>`・`/designsheets/<N>/main.{css,js}` | デザインシート（配色・文字・部品・アイコン・語調の約束をまとめたページ）。番号は 2 から欠番なしで増やす |
 | `assets/site.css` | `/assets/site.css` | トップと about のスタイル |
 | `assets/site.js` | `/assets/site.js` | トップと about の画面制御（円盤ナビ・ビュー切り替え・pjax） |
-| `assets/examples-header.{css,js}` | `/assets/…` | examples 共通ヘッダー（上端にカーソルを寄せると出る） |
+| `assets/examples-header.{css,js}` | `/assets/…` | examples と designsheets の共通ヘッダー（上端にカーソルを寄せると出る） |
 | `deploy/nginx.conf.example` | — | nginx の設定例と配置手順。公開しない |
 
 ## example を足す
@@ -57,8 +63,24 @@ yoshina.moe 系のサイト（`KashiroHeart/yoshinamoego`）と同じサーバ�
 一覧は円盤ナビとして描かれるが、`site.js` が `<ul class="examples">` の `<li>` を読んで並べるので、
 足すのは上の 1 行だけでよい（番号表示の `#01` 形式への整形も `site.js` がする）。
 
+## designsheet を足す
+
+`designsheets/1/`（テンプレート）に倣って作る。テンプレート自体は埋めずに空のまま残す。
+
+1. `designsheets/1/` を `designsheets/<N>/` に丸ごと複製する
+2. 書き換える
+   - `index.html` の `/designsheets/1/` を `/designsheets/<N>/` に
+   - `<title>` を `DS #<N> <タイトル> | sandbox` に、フッターを `sandbox DS #<N>` に
+   - `main.js` の localStorage キー `ds-1-theme` を `ds-<N>-theme` に
+   - `main.css` のトークン値（`:root` とダーク）をそのシートのデザインに合わせる（テンプレートには DS #2 の値が仮で入っている）
+3. `index.html` の空欄を埋める。各表の空行の直前に、行の書き方の見本をコメントで置いてある。書き終えたら先頭の手順コメントは消す
+
+トップの `index.html` の一覧には足さない。共通ヘッダーの番号は `DS #<N>` と出る。
+
+## 共通ヘッダー
+
 共通ヘッダーは固定配置で重ねるだけで、ページのレイアウトには触らない。
-クラス名・CSS 変数は `xh-` 接頭辞なので、example 側では `xh-` を使わない。
+クラス名・CSS 変数は `xh-` 接頭辞なので、example・designsheet 側では `xh-` を使わない。
 ページのテーマ切り替えが `<html data-theme="light|dark">` に従っていれば、ヘッダーの配色も追従する。
 
 ## トップと about
