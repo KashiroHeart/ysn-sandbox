@@ -1,4 +1,4 @@
-// examples 共通ヘッダー。
+// examples と designsheets の共通ヘッダー。
 // カーソルがページ上端に触れたら出し、ヘッダーから離れたら少し待って隠す。
 // hover できない端末では上端の取っ手をタップして開閉する。
 (() => {
@@ -6,7 +6,8 @@
   const MARGIN = 4;       // ヘッダーの下に設ける遊び
   const HIDE_DELAY = 150; // 離れてから隠すまで（ms）
 
-  const m = location.pathname.match(/^\/no\.(\d+)(\/|$)/);
+  // /no.N は #N、/designsheets/N は DS #N と出す
+  const m = location.pathname.match(/^\/(?:no\.(\d+)|designsheets\/(\d+))(?:\/|$)/);
 
   const bar = document.createElement('header');
   bar.className = 'xh-bar';
@@ -16,7 +17,7 @@
     '<a href="/about">このサイトについて</a>' +
     '</nav>' +
     '<span class="xh-num"></span>';
-  bar.querySelector('.xh-num').textContent = m ? '#' + m[1] : '';
+  bar.querySelector('.xh-num').textContent = !m ? '' : m[1] ? '#' + m[1] : 'DS #' + m[2];
 
   const handle = document.createElement('button');
   handle.type = 'button';
