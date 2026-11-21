@@ -6,8 +6,8 @@
   const MARGIN = 4;       // ヘッダーの下に設ける遊び
   const HIDE_DELAY = 150; // 離れてから隠すまで（ms）
 
-  // /no.N は #N、/designsheets/N は DS #N と出す
-  const m = location.pathname.match(/^\/(?:no\.(\d+)|designsheets\/(\d+))(?:\/|$)/);
+  // /examples/N/ は #N、/designsheets/N/ は DS #N と出す
+  const m = location.pathname.match(/^\/(?:examples\/(\d+)|designsheets\/(\d+))\//);
 
   const bar = document.createElement('header');
   bar.className = 'xh-bar';

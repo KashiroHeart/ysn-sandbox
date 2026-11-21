@@ -7,14 +7,14 @@ yoshina.moe 系のサイト（`KashiroHeart/yoshinamoego`）と同じサーバ�
 ## 絶対に崩さないこと
 
 - ビルドステップを作らない（バンドラもトランスパイラもパッケージマネージャも入れない）
-- URL は拡張子なし。`/about` → `about.html`（nginx の `try_files $uri $uri.html`）
-- example は `examples/<N>/` に置き、`/no.<N>` で見せる（nginx で付け替える。`/examples/…` は `/no.…` へ 301）
-  - `/no.1` → `examples/1/index.html`、`/no.1/main.js` → `examples/1/main.js`、`/no.1/foo` → `examples/1/foo.html`
-- 内部リンクも拡張子なし・ルート相対で書く（`/about`、`/no.1`、`/no.1/foo`）。
-  `/no.1` は末尾スラッシュなしなので、相対パス（`main.css`）は `/main.css` に解決されてしまう。必ず `/no.1/main.css` と書く
-- designsheet は `designsheets/<N>/` に置き、`/designsheets/<N>` で見せる（URL とディレクトリが同じ形）。
-  - `/designsheets/2` → `designsheets/2/index.html`、`/designsheets/2/main.css` → `designsheets/2/main.css`
-  - こちらも末尾スラッシュなしなので、読み込みは `/designsheets/2/main.css` のようにルート相対で書く
+- URL は拡張子なし。`/about` → `about.html`。`.html` 付きの URL は 404（拡張子なしへのリダイレクトもしない）
+- index は末尾スラッシュ付きのディレクトリでだけ見せる。`/` → `index.html`、`/examples/1/` → `examples/1/index.html`。
+  `/index`・`/index.html`・`/examples/1`（スラッシュなし）・`/examples/1/index` はすべて 404
+- 想定しない URL はリダイレクトで救わず 404 にする（有効な URL を広げない）。公開する URL は `deploy/nginx/sandbox.yoshina.moe.conf` の location が正
+- example は `examples/<N>/` に置き、URL もそのまま `/examples/<N>/` で見せる
+  - `/examples/1/` → `examples/1/index.html`、`/examples/1/main.js` → `examples/1/main.js`、`/examples/1/foo` → `examples/1/foo.html`
+- designsheet は `designsheets/<N>/` に置き、`/designsheets/<N>/` で見せる（example と同じ形）
+- 内部リンクは拡張子なし・ルート相対で書く（`/about`、`/examples/1/`、`/examples/1/foo`、`/examples/1/main.css`）
 - **example 同士・designsheet 同士・example と designsheet の間で CSS / JS を共有しない。** 各ページは自分のディレクトリの中で完結させる。
   共有してよいのは `assets/examples-header.*`（共通ヘッダー）だけ
 - `assets/site.css` / `assets/site.js` はトップと about 専用。example・designsheet からは読み込まない
@@ -26,15 +26,15 @@ yoshina.moe 系のサイト（`KashiroHeart/yoshinamoego`）と同じサーバ�
 | --- | --- | --- |
 | `index.html` | `/` | トップページ（タイトル画面と円盤ナビ = examples の一覧） |
 | `about.html` | `/about` | このサイトについて |
-| `examples/<N>/index.html` | `/no.<N>` | 試作ページ。番号は 1 から欠番なしで増やす |
-| `examples/<N>/main.{css,js}` | `/no.<N>/main.{css,js}` | その試作ページのスタイルとスクリプト |
-| `examples/<N>/<name>.html` など | `/no.<N>/<name>` | 複数ページの試作なら、2 枚目以降やその他のファイルもこのディレクトリに置く |
-| `designsheets/1/` | `/designsheets/1` | デザインシートのテンプレート。中身は空のまま保つ |
-| `designsheets/<N>/index.html`・`main.{css,js}` | `/designsheets/<N>`・`/designsheets/<N>/main.{css,js}` | デザインシート（配色・文字・部品・アイコン・語調の約束をまとめたページ）。番号は 2 から欠番なしで増やす |
+| `examples/<N>/index.html` | `/examples/<N>/` | 試作ページ。番号は 1 から欠番なしで増やす |
+| `examples/<N>/main.{css,js}` | `/examples/<N>/main.{css,js}` | その試作ページのスタイルとスクリプト |
+| `examples/<N>/<name>.html` など | `/examples/<N>/<name>` | 複数ページの試作なら、2 枚目以降やその他のファイルもこのディレクトリに置く |
+| `designsheets/1/` | `/designsheets/1/` | デザインシートのテンプレート。中身は空のまま保つ |
+| `designsheets/<N>/index.html`・`main.{css,js}` | `/designsheets/<N>/`・`/designsheets/<N>/main.{css,js}` | デザインシート（配色・文字・部品・アイコン・語調の約束をまとめたページ）。番号は 2 から欠番なしで増やす |
 | `assets/site.css` | `/assets/site.css` | トップと about のスタイル |
 | `assets/site.js` | `/assets/site.js` | トップと about の画面制御（円盤ナビ・ビュー切り替え・pjax） |
 | `assets/examples-header.{css,js}` | `/assets/…` | examples と designsheets の共通ヘッダー（上端にカーソルを寄せると出る） |
-| `deploy/nginx.conf.example` | — | nginx の設定例と配置手順。公開しない |
+| `deploy/nginx/sandbox.yoshina.moe.conf` | — | nginx の設定（`root /srv/ysn-sandbox`）。導入手順は `deploy/README.md`。公開しない |
 
 ## example を足す
 
@@ -50,14 +50,14 @@ yoshina.moe 系のサイト（`KashiroHeart/yoshinamoego`）と同じサーバ�
    （HTML に直接書いた方が扱いやすいものは、その限りではない）
 
    ```html
-   <link rel="stylesheet" href="/no.<N>/main.css">
+   <link rel="stylesheet" href="/examples/<N>/main.css">
    …
-   <script src="/no.<N>/main.js"></script>  <!-- </body> の直前 -->
+   <script src="/examples/<N>/main.js"></script>  <!-- </body> の直前 -->
    ```
 2. `index.html` の `<ul class="examples">` の末尾に 1 行足す
 
    ```html
-   <li><a href="/no.<N>" target="_blank"><span class="num">#<N></span><タイトル><span class="arrow" aria-hidden="true">→</span></a></li>
+   <li><a href="/examples/<N>/" target="_blank"><span class="num">#<N></span><タイトル><span class="arrow" aria-hidden="true">→</span></a></li>
    ```
 
 一覧は円盤ナビとして描かれるが、`site.js` が `<ul class="examples">` の `<li>` を読んで並べるので、
@@ -94,5 +94,5 @@ yoshina.moe 系のサイト（`KashiroHeart/yoshinamoego`）と同じサーバ�
 ## 確認
 
 `python3 -m http.server` は拡張子なし URL を解決しないので、
-`deploy/nginx.conf.example` の 443 側 server ブロックから `listen`・`ssl_*` を外し、
+`deploy/nginx/sandbox.yoshina.moe.conf` の 443 側 server ブロックから `listen`・`http2`・`ssl_*` を外し、
 `root` をこのディレクトリにして nginx をローカル起動して確かめる。
