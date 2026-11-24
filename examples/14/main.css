@@ -1,0 +1,280 @@
+/* #14 新トップページ試作 */
+:root {
+  --bg: #f3f3f1;
+  --ink: #121212;
+  --muted: #64645f;
+  --accent: #2443ff;
+  --error: #d1231a;
+  --hover: rgba(18, 18, 18, .06);
+
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --fade: .28s;
+  --move: .45s;
+
+  --t: clamp(32px, 9vw, 128px);          /* タイトルの文字サイズ */
+  --head-top: clamp(88px, 17vh, 184px);  /* タイトルの位置（タイトル画面と一覧で共通） */
+  --row: 52px;                           /* 一覧の 1 行 */
+  --sel: 104px;                          /* 一覧の選択中の 1 行 */
+  --sel-font: clamp(26px, 3.6vw, 44px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101110; --ink: #ebebe7; --muted: #94948e; --accent: #8a9dff; --error: #ff6d60;
+    --hover: rgba(235, 235, 231, .08);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101110; --ink: #ebebe7; --muted: #94948e; --accent: #8a9dff; --error: #ff6d60;
+  --hover: rgba(235, 235, 231, .08);
+  color-scheme: dark;
+}
+@media (max-width: 600px) {
+  :root { --row: 44px; --sel: 76px; --sel-font: 22px; }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+.vh {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ---------- 舞台 ---------- */
+.app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* 出し入れ: 隠すときは透明にしてから visibility を落とす */
+.menu, .bar, .num-wrap, .list-wrap {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--fade) ease, visibility 0s linear var(--fade), transform var(--move) var(--ease);
+}
+.app[data-view="title"] .menu,
+.app[data-view="list"] .bar,
+.app[data-view="list"] .num-wrap,
+.app[data-view="list"][data-cat="examples"] .list-wrap[data-cat="examples"],
+.app[data-view="list"][data-cat="designsheets"] .list-wrap[data-cat="designsheets"] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--fade) ease, visibility 0s, transform var(--move) var(--ease);
+}
+
+/* ---------- 上端のバー ---------- */
+.bar {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 clamp(16px, 3vw, 36px);
+}
+.home {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  transition: background-color .15s;
+}
+.home:hover { background: var(--hover); }
+.bar-link {
+  min-height: 44px;
+  font: 500 14px/1 var(--mono);
+  color: var(--muted);
+  transition: color .15s;
+}
+.bar-link:hover { color: var(--ink); }
+.bar-left { justify-self: start; }
+.bar-right { justify-self: end; }
+.app:not([data-cat="designsheets"]) .bar-left,
+.app:not([data-cat="examples"]) .bar-right { visibility: hidden; }
+
+/* ---------- タイトルと入力欄 ---------- */
+.head {
+  position: absolute;
+  top: var(--head-top);
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+.head-inner {
+  position: relative;
+  display: inline-block;
+  font: 500 var(--t)/1 var(--mono);
+  letter-spacing: -.02em;
+}
+.title {
+  position: relative;
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  white-space: pre;
+}
+.title-text { display: inline-block; min-width: .01em; }
+/* 打ち直しの間だけ出るカーソル。幅を取らないよう右に重ねる */
+.caret {
+  position: absolute;
+  left: 100%;
+  top: .06em;
+  width: .06em;
+  height: .88em;
+  margin-left: .04em;
+  background: var(--accent);
+  opacity: 0;
+}
+.app[data-typing] .caret { opacity: 1; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* 「#」のすぐ右に左寄せで置く。タイトルの中央揃えには含めない */
+.num-wrap {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  transform: none;
+}
+.num {
+  display: block;
+  width: calc(var(--len, 1) * 1ch + .12em);
+  height: 1.1em;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  caret-color: var(--accent);
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  box-shadow: inset 0 -.035em 0 var(--accent);
+  transition: color .15s, box-shadow .15s;
+}
+.num:focus { outline: none; box-shadow: inset 0 -.055em 0 var(--accent); }
+.num.is-invalid { color: var(--error); box-shadow: inset 0 -.035em 0 var(--error); }
+.num.is-invalid:focus { box-shadow: inset 0 -.055em 0 var(--error); }
+
+/* ---------- タイトル画面のボタン ---------- */
+.menu {
+  position: absolute;
+  top: calc(var(--head-top) + var(--t) + clamp(56px, 13vh, 150px));
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px clamp(32px, 7vw, 88px);
+  padding: 0 16px;
+}
+.link {
+  min-height: 44px;
+  font: 400 clamp(17px, 1.8vw, 21px)/1 var(--mono);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .35em;
+  transition: color .15s, text-decoration-color .15s;
+}
+.link:hover { color: var(--accent); }
+
+/* ---------- 一覧 ---------- */
+.list-wrap {
+  position: absolute;
+  top: calc(var(--head-top) + var(--t) + clamp(24px, 5vh, 56px));
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+          mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+}
+/* 隠れている一覧は、カテゴリの並び（examples が左、designsheets が右）の側へ少し寄せておく */
+.list-wrap[data-cat="examples"] { transform: translateX(-32px); }
+.list-wrap[data-cat="designsheets"] { transform: translateX(32px); }
+.app[data-view="list"][data-cat="examples"] .list-wrap[data-cat="examples"],
+.app[data-view="list"][data-cat="designsheets"] .list-wrap[data-cat="designsheets"] { transform: none; }
+
+.list {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(720px, calc(100% - 32px));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translate(-50%, var(--y, 0px));
+  transition: transform var(--move) var(--ease);
+}
+.list li {
+  display: flex;
+  align-items: center;
+  height: var(--row);
+  opacity: var(--o, 1);
+  transition: height var(--move) var(--ease), opacity var(--move) var(--ease);
+}
+.list li.is-sel { height: var(--sel); }
+.list a {
+  display: grid;
+  grid-template-columns: 4.5ch minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0 clamp(12px, 2.4vw, 28px);
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+.list .no {
+  font: 500 14px/1 var(--mono);
+  color: var(--muted);
+  text-align: right;
+  transition: color .2s;
+}
+.list .name {
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: font-size var(--move) var(--ease);
+}
+.list li.is-sel .no { color: var(--accent); }
+.list li.is-sel .name { font-size: var(--sel-font); font-weight: 500; }
+.list li.is-sel a:hover .name { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em; }
+
+/* ---------- 動きを減らす ---------- */
+@media (prefers-reduced-motion: reduce) {
+  :root { --fade: 0s; --move: 0s; }
+  .app[data-typing] .caret { animation: none; }
+}
+
+/* ---------- JS が無いとき: 一覧をふつうに縦に並べる ---------- */
+.no-js .app { position: static; padding: 64px 16px; touch-action: auto; }
+.no-js .head, .no-js .list-wrap, .no-js .list { position: static; }
+.no-js .bar, .no-js .menu, .no-js .num-wrap, .no-js .caret { display: none; }
+.no-js .list-wrap {
+  max-width: 720px;
+  margin: 48px auto 0;
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  -webkit-mask-image: none;
+          mask-image: none;
+}
+.no-js .list-wrap::before { content: attr(aria-label); font: 500 14px/1 var(--mono); color: var(--muted); }
+.no-js .list { width: auto; margin-top: 12px; transform: none; }
+.no-js .list li { height: auto; padding: 6px 0; opacity: 1; }

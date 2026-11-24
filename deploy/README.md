@@ -39,8 +39,8 @@ git pull
 
 ```sh
 curl -sI https://sandbox.yoshina.moe/ | head -1             # 200
-curl -sI https://sandbox.yoshina.moe/about | head -1        # 200
-curl -sI https://sandbox.yoshina.moe/about.html | head -1   # 404
+curl -sI https://sandbox.yoshina.moe/examples/12/about | head -1       # 200
+curl -sI https://sandbox.yoshina.moe/examples/12/about.html | head -1  # 404
 curl -sI https://sandbox.yoshina.moe/examples/1/ | head -1  # 200
 curl -sI https://sandbox.yoshina.moe/examples/1 | head -1   # 404
 curl -sI https://sandbox.yoshina.moe/README.md | head -1    # 404

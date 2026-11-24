@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#14 新トップページ試作 | sandbox</title>
+<script>document.documentElement.classList.replace('no-js', 'js');</script>
+<link rel="stylesheet" href="/assets/examples-header.css">
+<script src="/assets/examples-header.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/examples/14/main.css">
+</head>
+<body>
+<!--
+  画面は .app[data-view] で切り替える（main.js）。
+    title = タイトル、list = 一覧、busy = 切り替えの途中（文字の打ち直し中）
+  .app[data-cat] は一覧に出しているカテゴリ（examples | designsheets）。
+  一覧の中身は下の <ul> をそのまま使う。項目を足すときは番号順に末尾へ。
+-->
+<div class="app" data-view="title" data-cat="">
+
+  <div class="bar">
+    <button class="bar-link bar-left" type="button" data-go="examples">← examples</button>
+    <button class="home" type="button" aria-label="タイトルに戻る">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9v11h13V9"/><path d="M10 20v-6h4v6"/></svg>
+    </button>
+    <button class="bar-link bar-right" type="button" data-go="designsheets">designsheets →</button>
+  </div>
+
+  <div class="head">
+    <div class="head-inner">
+      <h1 class="title"><span class="title-text">sandbox</span><span class="caret" aria-hidden="true"></span></h1>
+      <label class="num-wrap">
+        <span class="vh">ページ番号</span>
+        <input class="num" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="3" value="1">
+      </label>
+    </div>
+  </div>
+
+  <nav class="menu" aria-label="カテゴリ">
+    <button class="link" type="button" data-go="examples">examples</button>
+    <button class="link" type="button" data-go="designsheets">designsheets</button>
+  </nav>
+
+  <section class="list-wrap" data-cat="examples" aria-label="examples">
+    <ul class="list">
+      <li><a href="/examples/1/" target="_blank"><span class="no">#1</span><span class="name">JSON Converter</span></a></li>
+      <li><a href="/examples/2/" target="_blank"><span class="no">#2</span><span class="name">基数変換 A 縦積み</span></a></li>
+      <li><a href="/examples/3/" target="_blank"><span class="no">#3</span><span class="name">基数変換 B 左右2ペイン</span></a></li>
+      <li><a href="/examples/4/" target="_blank"><span class="no">#4</span><span class="name">基数変換 C 基数バー</span></a></li>
+      <li><a href="/examples/5/" target="_blank"><span class="no">#5</span><span class="name">ヴィジュネル暗号 A 縦一列</span></a></li>
+      <li><a href="/examples/6/" target="_blank"><span class="no">#6</span><span class="name">ヴィジュネル暗号 B 左右2カラム</span></a></li>
+      <li><a href="/examples/7/" target="_blank"><span class="no">#7</span><span class="name">ヴィジュネル暗号 C 設定レール</span></a></li>
+      <li><a href="/examples/8/" target="_blank"><span class="no">#8</span><span class="name">コード進行エディタ</span></a></li>
+      <li><a href="/examples/9/" target="_blank"><span class="no">#9</span><span class="name">カラーピッカー</span></a></li>
+      <li><a href="/examples/10/" target="_blank"><span class="no">#10</span><span class="name">日付時刻翻訳 組み立て</span></a></li>
+      <li><a href="/examples/11/" target="_blank"><span class="no">#11</span><span class="name">日付時刻翻訳 翻訳</span></a></li>
+      <li><a href="/examples/12/" target="_blank"><span class="no">#12</span><span class="name">旧トップページ</span></a></li>
+      <li><a href="/examples/13/" target="_blank"><span class="no">#13</span><span class="name">カラーピッカー（改）</span></a></li>
+      <li><a href="/examples/14/" target="_blank"><span class="no">#14</span><span class="name">新トップページ試作</span></a></li>
+    </ul>
+  </section>
+
+  <section class="list-wrap" data-cat="designsheets" aria-label="designsheets">
+    <ul class="list">
+      <li><a href="/designsheets/1/" target="_blank"><span class="no">#1</span><span class="name">テンプレート</span></a></li>
+      <li><a href="/designsheets/2/" target="_blank"><span class="no">#2</span><span class="name">ツール デザインサンプル</span></a></li>
+    </ul>
+  </section>
+
+</div>
+<script src="/examples/14/main.js"></script>
+</body>
+</html>
