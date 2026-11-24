@@ -1,9 +1,9 @@
-// トップページと「このサイトについて」の画面制御。examples からは読み込まない。
+// #12 旧トップページ（トップと「このサイトについて」）の画面制御。
 //
 // 2 ページは同じ .stage の上の「ビュー」として扱う。
 //   .stage[data-view] = title（タイトル）| nav（円盤ナビ）| about（このサイトについて）
 //   .stage[data-prev] = 直前のビュー（CSS が遷移アニメーションを出し分けるのに使う）
-// / と /about の行き来は pjax: 相手のページを fetch して data-part の要素だけ差し込み、
+// /examples/12/ と /examples/12/about の行き来は pjax: 相手のページを fetch して data-part の要素だけ差し込み、
 // history.pushState で URL を変える。見た目の切り替えは site.css が data-view で行う。
 (() => {
   'use strict';
@@ -11,7 +11,7 @@
   const stage = document.querySelector('.stage');
   if (!stage) return;
 
-  const PART_URL = { top: '/', about: '/about' };
+  const PART_URL = { top: '/examples/12/', about: '/examples/12/about' };
   const DIM = 0.28; // 真横以外の項目名の不透明度
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const partOf = (view) => (view === 'about' ? 'about' : 'top');

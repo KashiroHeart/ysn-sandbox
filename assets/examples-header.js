@@ -14,7 +14,6 @@
   bar.innerHTML =
     '<nav class="xh-nav" aria-label="サイト">' +
     '<a href="/">トップページ</a>' +
-    '<a href="/about">このサイトについて</a>' +
     '</nav>' +
     '<span class="xh-num"></span>';
   bar.querySelector('.xh-num').textContent = !m ? '' : m[1] ? '#' + m[1] : 'DS #' + m[2];
