@@ -1,0 +1,267 @@
+/* #16 Randactions */
+:root {
+  /* 画面 */
+  --bg: #eceff4;           /* ページとステージの外 */
+  --ink: #14204a;
+  --muted: #56648a;
+  --blue: #2559d6;
+  --blue-hover: #1d4cc2;
+  --blue-press: #183f9f;
+  --key-line: rgba(37, 89, 214, .32);
+  --dialog: #13224f;
+  --dialog-line: rgba(255, 255, 255, .22);
+  --dialog-ink: #e6ecff;
+  --miss: #6aa6ff;         /* 「Miss!」は青文字 */
+  --clear: #ffd23f;        /* 「Stage Clear!」は黄文字 */
+
+  /* ステージ（main.js が canvas の描画に使う） */
+  --field: #f7f9fc;
+  --grid: rgba(37, 89, 214, .07);
+  --edge: rgba(37, 89, 214, .3);
+  --block: #2f63d8;
+  --block-fill: #dfe7fb;
+  --diamond: #17358a;
+  --goal: #f4bf1c;
+  --player: #1b4cd4;
+
+  --font: "Chakra Petch", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--bg);
+  color: var(--ink);
+  font: 500 16px/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+
+.app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.field {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+/* ---------- ボタン・キー ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  padding: 0 28px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font: 600 17px/1 var(--font);
+  letter-spacing: .03em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s, transform .1s, box-shadow .15s;
+}
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 3px solid var(--miss); outline-offset: 3px; }
+.btn-primary {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--blue-press), 0 10px 24px rgba(37, 89, 214, .25);
+}
+.btn-primary:hover { background: var(--blue-hover); }
+.btn-primary:active { box-shadow: 0 2px 0 var(--blue-press), 0 6px 16px rgba(37, 89, 214, .22); }
+.btn-ghost {
+  background: transparent;
+  border-color: var(--dialog-line);
+  color: var(--dialog-ink);
+}
+.btn-ghost:hover { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .4); }
+
+.key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border: 1.5px solid var(--key-line);
+  border-bottom-width: 3px;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--blue-press);
+  font: 600 13px/1 var(--font);
+}
+.key-wide { min-width: 64px; }
+
+/* ---------- タイトル ---------- */
+.title-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px 11vh;   /* 下を厚くしてタイトルを中央よりやや上に置く */
+  text-align: center;
+  background:
+    radial-gradient(70% 60% at 50% 42%, rgba(236, 239, 244, .95), rgba(236, 239, 244, .8) 65%, rgba(236, 239, 244, .68));
+  animation: fade .4s var(--ease);
+}
+.glyphs {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.glyphs svg { width: 22px; height: 22px; }
+.g-player { fill: var(--player); }
+.g-block { fill: var(--block-fill); stroke: var(--block); stroke-width: 2; }
+.g-block-in { fill: none; stroke: var(--block); stroke-width: 2; }
+.g-diamond { fill: var(--field); stroke: var(--diamond); stroke-width: 2; }
+.g-goal { fill: var(--goal); }
+
+.game-title {
+  margin: 0;
+  color: var(--blue);
+  font-size: clamp(50px, 12.5vw, 124px);
+  font-weight: 700;
+  line-height: .95;
+  letter-spacing: -.015em;
+}
+.tagline {
+  margin: 14px 0 40px;
+  color: var(--muted);
+  font-size: clamp(14px, 3.6vw, 17px);
+  letter-spacing: .05em;
+}
+.btn-start { min-width: 200px; height: 56px; font-size: 18px; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 28px;
+  max-width: 720px;
+  margin: 40px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 14px;
+}
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.legend li > span:last-child { margin-left: 4px; }
+.legend .mini { width: 18px; height: 18px; }
+@media (max-width: 560px) {
+  .legend { display: grid; grid-template-columns: auto auto; gap: 12px 28px; }
+}
+.legend-note {
+  max-width: 32em;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  opacity: .9;
+}
+
+.touch-note { display: none; margin: 16px 0 0; color: var(--muted); font-size: 13px; }
+@media (hover: none) and (pointer: coarse) {
+  .touch-note { display: block; }
+}
+
+/* ---------- プレイ中 ---------- */
+.hud {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  pointer-events: none;
+  opacity: .8;
+}
+.hud > span { display: inline-flex; align-items: center; gap: 5px; }
+.hud > span > .key:last-of-type { margin-right: 3px; }
+
+/* ---------- ミス・クリアのダイアログ ---------- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(19, 34, 79, .3);
+  animation: fade .2s ease-out;
+}
+.dialog {
+  position: relative;
+  width: min(440px, 100%);
+  height: 288px;
+  border-radius: 20px;
+  background: var(--dialog);
+  box-shadow: 0 28px 64px rgba(10, 20, 52, .38), inset 0 0 0 1px rgba(255, 255, 255, .06);
+  color: var(--dialog-ink);
+  outline: none;
+  animation: pop .32s var(--ease);
+}
+/* 文字は中央よりやや上、ボタンは中央よりやや下 */
+.dialog-text {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 38%;
+  margin: 0;
+  transform: translateY(-50%);
+  font-size: clamp(40px, 11vw, 58px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -.01em;
+  text-align: center;
+}
+.overlay[data-result="miss"] .dialog-text { color: var(--miss); }
+.overlay[data-result="clear"] .dialog-text { color: var(--clear); }
+.dialog-actions {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  top: 70%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  transform: translateY(-50%);
+}
+.dialog-actions .btn { padding: 0 12px; }
+
+@media (max-width: 400px) {
+  .dialog { height: 252px; }
+  .dialog-actions { left: 20px; right: 20px; gap: 10px; }
+  .dialog-actions .btn { height: 48px; font-size: 15px; }
+}
+
+.noscript {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 16px;
+  background: var(--bg);
+  color: var(--ink);
+  text-align: center;
+}
+
+@keyframes fade { from { opacity: 0; } }
+@keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .title-screen, .overlay, .dialog { animation: none; }
+  .btn { transition: none; }
+}
