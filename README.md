@@ -11,4 +11,4 @@
 | `/designsheets/2/` | `designsheets/2/index.html`（DS #2 ツール デザインサンプル） |
 
 静的ファイルだけで、ビルドは無い。nginx の設定は
-[`deploy/nginx/sandbox.yoshina.moe.conf`](deploy/nginx/sandbox.yoshina.moe.conf)（導入手順は [`deploy/README.md`](deploy/README.md)）、ページの足し方は [`CLAUDE.md`](CLAUDE.md) に書いてある。
+[`deploy/nginx/sandbox.yoshina.moe.conf`](deploy/nginx/sandbox.yoshina.moe.conf)（導入手順は [`deploy/README.md`](deploy/README.md)）、ページの足し方は [`AGENTS.md`](AGENTS.md) に書いてある。
