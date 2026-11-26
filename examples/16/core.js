@@ -75,8 +75,9 @@
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
   // ---------- 難易度 ----------
-  // 難易度は「クリアに必要なジャンプ（スペースの押下。2 段目も 1 回）の最少回数」で測る。
+  // Easy / Hard は「クリアに必要なジャンプ（スペースの押下。2 段目も 1 回）の最少回数」で測る。
   // 作り方を難易度ごとに変えて狙った難しさに寄せ、到達判定（solve）で範囲に入ったものを採る。
+  // Extreme は区間の型とその並びで難しさを作る（MODES.extreme・SECTIONS）。
   const MODES = {
     easy: {
       plats: [5, 7],          // 経路の足場数（目標）。最小値に届かなければ作り直す
@@ -906,11 +907,12 @@
   // ---------- 難易度つきの生成 ----------
   // 候補を作っては solve で押下回数を確かめ、範囲に入ったものを返す。
   // maxTries 個（solve まで進んだ候補の数）を試すか budgetMs を過ぎたら、範囲に最も近かったものを返す。
+  // Extreme は buildExtreme の候補を solveCuts で確かめ、クリアできて難配置を飛ばせないもの（valid）を返す。
   function generateStage(mode, seed, opt = {}) {
     const m = MODES[mode];
-    const maxTries = opt.maxTries ?? 30;
-    const budgetMs = opt.budgetMs ?? 2000;
-    const [lo, hi] = m.presses;
+    const extreme = mode === 'extreme';
+    const maxTries = opt.maxTries ?? m.maxTries ?? 30;
+    const budgetMs = opt.budgetMs ?? m.budgetMs ?? 2000;
     const rng = makeRng(seed);
     const t0 = now();
     let best = null;
@@ -918,6 +920,23 @@
     let tries = 0;
     for (let built = 0; built < 2000 && tries < maxTries; built++) {
       if (tries > 0 && now() - t0 > budgetMs) break;
+      if (extreme) {
+        // Extreme はクリアできて、抜け道のある難配置が最も少ないもの（0 個になったらそこで決める）を採る
+        const s = buildExtreme(rng, m);
+        if (!s) continue;
+        tries++;
+        const r = solveCuts(s);
+        if (r.overflow || r.presses === Infinity) continue;
+        const d = r.bypassed.length;
+        if (d < bestD) {
+          best = s;
+          bestD = d;
+          best.presses = r.presses;
+        }
+        if (d === 0) break;
+        continue;
+      }
+      const [lo, hi] = m.presses;
       const s = buildStage(rng, m);
       if (!s) continue;
       tries++;
@@ -933,6 +952,7 @@
       if (d === 0) break;
     }
     const stage = best || Object.assign(fallbackStage(), { presses: null });
+    if (extreme) stage.valid = !!best && bestD === 0; // 条件を満たす候補が無ければ、抜け道の最も少ないもの
     stage.mode = mode;
     stage.tries = tries;
     stage.ms = Math.round(now() - t0);
