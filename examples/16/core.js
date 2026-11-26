@@ -115,6 +115,112 @@
     },
   };
 
+  // ---------- 区間の型 ----------
+  // Extreme の経路に組み込む、動ける範囲を絞った地形。右向き（左から入って右へ抜ける）で書き、左向きは左右を反転して使う。
+  // 記号: E 入口の足場、X 出口の足場、= ほかの四角、# 菱型、o 本体（意図した軌道が必ず通る空き。抜け道の判定に使う）、
+  //       . 空けておくマス、S 着地場所（空き。テストの開始位置）、G テストのゴール位置（空き）、- 型の外（何を置いてもよい）。
+  // 本体の周り 8 マスは型の中に収める（型の中は keep になり、飾りの菱型が本体のすぐ横に来ない）。
+  // tier: 'hard' は難配置（幅 3〜5 tick）、'relief' は癒し区間（幅 9〜11 tick）。turn の型は入った向きと逆に抜ける。
+  // 幅は tests/16/windows-slow.js で測る（押す時期・離す時期などを独立に ±r tick ずらしても必ずクリアできる幅 2r+1）
+  const repeat = (ch, n) => ch.repeat(n);
+  const SECTIONS = {
+    // 落下→空中ジャンプ。天井の手前の縦 2 マスの菱型は、着地場所から天井を越える抜け道を塞ぐ
+    drop: {
+      tier: 'hard',
+      turn: false,
+      variants: [[
+        '---#------',
+        '--.#####.-',
+        'S..ooooo..',
+        'EEEEoooo.G',
+        '---=oooXXX',
+        '---=...#--',
+      ]],
+    },
+    // 低い天井の小ジャンプ（隙間 g = 2, 3, 4）
+    hop: {
+      tier: 'hard',
+      turn: false,
+      variants: [2, 3, 4].map((g) => [
+        '---.' + repeat('#', g + 2) + '.-',
+        '....' + repeat('o', g + 2) + '..',
+        'S...' + repeat('o', g + 2) + '.G',
+        'EEEE' + repeat('.', g) + 'XXXX',
+      ]),
+    },
+    // 天井付きの 2 段ジャンプ（穴 g = 1, 2, 3）。3 段上の足場の上を、頭上に 1 段空けて塞ぐ。
+    // 上段の足場は天井の外へ 2 マス延ばし、次のジャンプの踏み切りにする
+    capped: {
+      tier: 'hard',
+      turn: false,
+      variants: [1, 2, 3].map((g) => [
+        repeat('#', g + 7) + '--',
+        '....' + repeat('o', g) + '.....',
+        '....' + repeat('o', g) + '.G...',
+        '....' + repeat('o', g) + 'XXXXX',
+        '....' + repeat('o', g) + '.....',
+        'S...' + repeat('o', g) + '.....',
+        'EEEE' + repeat('.', g + 5),
+      ]),
+    },
+    // ネズミ返し。折り返し専用で、ネズミ返しの上から X（出口）へ跳び、逆向きへ進む。反対側は菱型と四角で塞ぐ
+    overhang: {
+      tier: 'hard',
+      turn: true,
+      variants: [[
+        '..X.....',
+        '..#Gooo.',
+        '..#==o..',
+        '...ooo..',
+        'S..ooo..',
+        'EEEE....',
+      ]],
+    },
+    // 広めの菱型ゲート（開口 3 段・穴 3、開口 3 段・穴 4、開口 4 段・穴 4）。ゲートは穴の中央の 2 列
+    gate: {
+      tier: 'relief',
+      turn: false,
+      variants: [[3, 3], [3, 4], [4, 4]].map(([open, pit]) => {
+        const w = 6 + pit;
+        const gc = 3 + Math.floor((pit - 2) / 2);
+        const row = (f) => Array.from({ length: w }, (_, c) => f(c)).join('');
+        const gate = (c) => c === gc || c === gc + 1;
+        return [
+          row((c) => (gate(c) ? '#' : '-')),
+          ...Array.from({ length: open }, () => repeat('.', w)),
+          row((c) => (c === 0 ? 'S' : gate(c) ? '#' : c === w - 2 ? 'G' : '.')),
+          'EEE' + repeat('.', pit) + 'XXX',
+        ];
+      }),
+    },
+    // 天井まで 2 段空けた小ジャンプ（隙間 g = 3, 4）
+    roomy: {
+      tier: 'relief',
+      turn: false,
+      variants: [3, 4].map((g) => [
+        '----' + repeat('#', g + 2) + '--',
+        '....' + repeat('.', g + 2) + '..',
+        '....' + repeat('.', g + 2) + '..',
+        'S...' + repeat('.', g + 2) + '.G',
+        'EEEE' + repeat('.', g) + 'XXXX',
+      ]),
+    },
+  };
+
+  // 型の行を dir の向きにそろえ、入口・出口の足場、着地場所、テストのゴールの位置（型の中の座標）を求める
+  function sectionShape(rows, dir) {
+    const oriented = dir < 0 ? rows.map((line) => [...line].reverse().join('')) : rows.slice();
+    const shape = { w: oriented[0].length, h: oriented.length, rows: oriented, entry: null, exit: null, start: null, goal: null };
+    oriented.forEach((line, r) => [...line].forEach((ch, c) => {
+      if (ch === 'E' || ch === 'X') {
+        const k = ch === 'E' ? 'entry' : 'exit';
+        if (shape[k]) shape[k].len++; else shape[k] = { c, r, len: 1 };
+      } else if (ch === 'S') shape.start = { c, r };
+      else if (ch === 'G') shape.goal = { c, r };
+    }));
+    return shape;
+  }
+
   // ---------- ステージ生成 ----------
   // 1. 足場を左右へ順につなぐ「経路」を作り、最初の足場に自機、最後の足場にゴールを置く。
   //    足場の間隔は 2 段ジャンプで届く範囲にとり、跳ぶのに使う空間は keep に印を付けて空けておく。
@@ -645,7 +751,7 @@
 
   self.Randactions = {
     TILE, COLS, ROWS, STAGE_W, STAGE_H, EMPTY, BLOCK, DIAMOND, GOAL,
-    TICK_MS, JUMP_BUFFER, HIT_BOTTOM, MODES,
+    TICK_MS, JUMP_BUFFER, HIT_BOTTOM, MODES, SECTIONS, sectionShape,
     makeRng, newSeed, makeBuilder, decorate, buildStage, fallbackStage, generateStage, demoStage,
     collides, touched, resetPlayer, step, solve, solveCuts,
   };
