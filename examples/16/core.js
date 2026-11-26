@@ -117,14 +117,13 @@
   // Extreme は押下回数ではなく、区間の型（SECTIONS）とその並びで難しさを作る。骨組み（普通の足場のつなぎ方）は Hard と同じ。
   // 区間は難配置 3〜5 個・癒し区間 1〜2 個。到達判定（solveCuts）で、クリアできて難配置を飛ばせないものを採る
   MODES.extreme = {
-    firstRow: [15, ROWS - 2],
+    firstRow: [18, ROWS - 2],         // 下の方から始めて、折り返しながら上へ積む
     firstLen: [2, 3],
     stepDy: MODES.hard.stepDy,
     gap: MODES.hard.gap,
     len: MODES.hard.len,
-    links: [0, 1],                    // 区間の前にはさむ普通の足場（区間の入口へのジャンプとは別）
-    turnLinks: [1, 2],                // 折り返した直後にはさむ普通の足場
-    turnStepDy: [-3, -3, -2, -2, -1], // そのときの段差（上へずらして前の列と重ならないように）
+    links: [0, 4],                    // 区間の前にはさむ普通の足場の数（区間が置けるまで足す。入口へのジャンプとは別）
+    attempts: 30,                     // 区間 1 つにつき、普通の足場のつなぎ方を何通り試すか
     hard: [3, 5],
     relief: [1, 2],
     overhangRate: 0.5,                // ネズミ返しを狙う割合
@@ -341,6 +340,56 @@
       return null;
     };
 
+    // 区間の型 kind の変形 variant を、足場 prev から dir の向きへ普通のジャンプ 1 回で入口の足場に乗れる場所に置く。
+    // 型の四角・菱型は空いた（keep でない）マスに、型の空きは空いたマスに置く。跳ぶ空間（linkZones）に何もないことも確かめる。
+    // 置けたら型の中（'-' 以外）を keep にし、{ section, exit（出口の足場）, dir（抜ける向き） } を返す
+    const placeSection = (prev, dir, kind, variant, m) => {
+      const def = SECTIONS[kind];
+      const shape = sectionShape(def.variants[variant], dir);
+      const { entry, exit } = shape;
+      const solidOf = { E: BLOCK, X: BLOCK, '=': BLOCK, '#': DIAMOND };
+      const local = []; // 型の中のマス [列, 行, 記号]
+      shape.rows.forEach((line, r) => [...line].forEach((ch, c) => { if (ch !== '-') local.push([c, r, ch]); }));
+      for (let t = 0; t < 40; t++) {
+        const dy = pick(m.stepDy);
+        const gap = m.gap(dy, int);
+        const er = prev.r + dy;
+        // 入口の足場の手前側の端を、prev から gap マス先にそろえる
+        const oc = (dir > 0 ? prev.c + prev.len + gap : prev.c - gap - 1) - (dir > 0 ? entry.c : entry.c + entry.len - 1);
+        const or = er - entry.r;
+        if (or + exit.r < HEADROOM + 1) continue;
+        const solids = new Set();
+        const fits = local.every(([c, r, ch]) => {
+          if (!inside(oc + c, or + r)) return false;
+          const i = (or + r) * COLS + oc + c;
+          if (!(ch in solidOf)) return grid[i] === EMPTY;
+          solids.add(i);
+          return free(oc + c, or + r);
+        });
+        if (!fits) continue;
+        const zones = linkZones(prev, { c: oc + entry.c, r: er, len: entry.len });
+        if (zones.some((z) => occupied(z) || !eachCell(z[0], z[1], z[2], z[3], (i) => !solids.has(i)))) continue;
+        const body = [];
+        const cells = [];
+        for (const [c, r, ch] of local) {
+          const i = (or + r) * COLS + oc + c;
+          if (ch in solidOf) grid[i] = solidOf[ch];
+          if (ch === 'o') body.push(i);
+          keep[i] = 1;
+          cells.push(i);
+        }
+        zones.forEach(mark);
+        const exitDir = def.turn ? -dir : dir;
+        const section = {
+          kind, tier: def.tier, variant, dir, exitDir, c: oc, r: or, w: shape.w, h: shape.h,
+          exit: { c: oc + exit.c, r: or + exit.r, len: exit.len }, body, cells,
+        };
+        sections.push(section);
+        return { section, exit: section.exit, dir: exitDir };
+      }
+      return null;
+    };
+
     // 途中まで作った状態を覚えておき、うまくいかなかったら戻す
     const snapshot = () => ({ grid: grid.slice(), keep: keep.slice(), plats: plats.length, sections: sections.length });
     const restore = (s) => {
@@ -353,7 +402,7 @@
     return {
       rng, grid, keep, plats, sections,
       int, pick, inside, free, rowFree, eachCell, mark, occupied, fillRow, addPlat,
-      linkZones, nextPlat, snapshot, restore,
+      linkZones, nextPlat, placeSection, snapshot, restore,
     };
   }
 
@@ -467,6 +516,109 @@
 
     decorate(b, m);
     return { grid, start, goal };
+  }
+
+  // Extreme の経路。planSections の並びどおりに区間を置き、区間と区間の間は普通の足場でつなぐ。
+  // 並びの途中で置けなくなったら、最後に置いた難配置まで戻す。難配置・癒し区間が最低数に届かなければ null を返す。
+  // 抜け道がないかは solveCuts で確かめる
+  function buildExtreme(rng, m) {
+    const b = makeBuilder(rng);
+    const { grid, int } = b;
+    const plan = planSections(rng, m);
+    const wantOverhang = rng() < m.overhangRate;
+
+    const len0 = int(m.firstLen[0], m.firstLen[1]);
+    const fromLeft = rng() < 0.5;
+    const first = {
+      c: fromLeft ? int(0, 3) : int(COLS - len0 - 3, COLS - len0),
+      r: int(m.firstRow[0], m.firstRow[1]),
+      len: len0,
+    };
+    b.addPlat(first);
+
+    // 種類 kind の変形を、シャッフルした順に試す
+    const tryKind = (p, dir, kind) => {
+      const order = SECTIONS[kind].variants.map((_, i) => i);
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = int(0, i);
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+      for (const v of order) {
+        const placed = b.placeSection(p, dir, kind, v, m);
+        if (placed) return placed;
+      }
+      return null;
+    };
+
+    // 区間の型を置く場所は、直前の区間の出口から普通の足場を 0〜links[1] 個つないだ先で探す。
+    // 足場は Hard と同じように進め、壁に当たったら折り返す。区間はその足場から前にも後ろにも試す（後ろは折り返し）。
+    // 1 通りのつなぎ方で置けなければ、つなぎ方を変えて attempts 回まで試す
+    const tryItem = (item, start, dir0) => {
+      let p = start;
+      let d = dir0;
+      for (let links = 0; ; links++) {
+        if (links >= m.links[0]) {
+          for (const dd of [d, -d]) {
+            const placed = tryKind(p, dd, item.kind);
+            if (placed) return placed;
+            // 次の難配置が置けないときは、代わりにネズミ返し（折り返し専用）を 1 回だけ試す
+            if (dd === d && item.tier === 'hard' && wantOverhang && !usedOverhang) {
+              const turn = tryKind(p, d, 'overhang');
+              if (turn) {
+                usedOverhang = true;
+                return turn;
+              }
+            }
+          }
+        }
+        if (links >= m.links[1]) return null;
+        let st = b.nextPlat(p, d, m);
+        if (!st) {
+          d = -d;
+          st = b.nextPlat(p, d, m);
+        }
+        if (!st) return null;
+        st.zones.forEach(b.mark);
+        b.addPlat(st.plat);
+        p = st.plat;
+      }
+    };
+
+    let dir = fromLeft ? 1 : -1;
+    let prev = first;
+    let usedOverhang = false;
+    let lastHard = null; // 最後に難配置を置いた直後の状態
+    for (const item of plan) {
+      const snap = b.snapshot();
+      let placed = null;
+      for (let t = 0; t < m.attempts && !placed; t++) {
+        b.restore(snap);
+        placed = tryItem(item, prev, dir);
+      }
+      if (!placed) { // 置けなければ打ち切る
+        b.restore(snap);
+        break;
+      }
+      prev = placed.exit;
+      dir = placed.dir;
+      if (placed.section.tier === 'hard') lastHard = b.snapshot();
+    }
+    if (!lastHard) return null;
+    b.restore(lastHard); // 最後が癒し区間にならないように
+    const sections = b.sections;
+    const hard = sections.filter((s) => s.tier === 'hard').length;
+    if (hard < m.hard[0] || sections.length - hard < m.relief[0]) return null;
+
+    // ゴールは最後の区間の出口の足場の、抜ける向きの端の上
+    const last = sections[sections.length - 1];
+    const goal = { c: last.exitDir > 0 ? last.exit.c + last.exit.len - 1 : last.exit.c, r: last.exit.r - 1 };
+    if (grid[goal.r * COLS + goal.c] !== EMPTY) return null; // ネズミ返しの出口の上は型の外なので、ふさがっていることがある
+    grid[goal.r * COLS + goal.c] = GOAL;
+    const start = { c: first.c + int(0, first.len - 1), r: first.r - 1 };
+    b.mark([start.c - 2, start.r - 2, start.c + 2, start.r]); // 開始直後に菱型が触れないように
+
+    decorate(b, m);
+    return { grid, start, goal, sections };
   }
 
   // 生成が続けて失敗したとき用（実際にはまず使われない）
@@ -800,7 +952,7 @@
   self.Randactions = {
     TILE, COLS, ROWS, STAGE_W, STAGE_H, EMPTY, BLOCK, DIAMOND, GOAL,
     TICK_MS, JUMP_BUFFER, HIT_BOTTOM, MODES, SECTIONS, sectionShape, planSections,
-    makeRng, newSeed, makeBuilder, decorate, buildStage, fallbackStage, generateStage, demoStage,
+    makeRng, newSeed, makeBuilder, decorate, buildStage, buildExtreme, fallbackStage, generateStage, demoStage,
     collides, touched, resetPlayer, step, solve, solveCuts,
   };
 })();
