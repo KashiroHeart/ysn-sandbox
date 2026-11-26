@@ -1,6 +1,7 @@
 // #16 Randactions
 // 自機（▲）を動かしてゴール（●）を目指すアクションゲーム。ステージは開始のたびにランダムで作る。
 // 物理・ステージ生成・到達判定は core.js、難易度つきの生成は worker.js（別スレッド）にある。ここは画面と入力。
+// 難易度は Easy / Hard / Extreme。Extreme は生成に時間がかかるので、Easy / Hard とは別の Worker で作る。
 //
 // 画面は .app[data-screen] = title | play | miss | clear で切り替える。
 // ゲームは 60 tick/秒の固定ステップで進め、描画は requestAnimationFrame で tick の間を補間する。
@@ -69,14 +70,22 @@
   }
 
   // ---------- ステージの用意 ----------
-  // Easy / Hard を 1 つずつ worker.js で先回りして作っておき、ボタンを押したらすぐ始める。
+  // 難易度ごとに 1 つずつ worker.js で先回りして作っておき、ボタンを押したらすぐ始める。
+  // Extreme は作るのに時間がかかるので別の Worker で作り、Easy / Hard の用意を待たせない。
   // 間に合っていなければボタンを「Generating…」にして待つ。Worker が使えなければ押してからこのスレッドで作る
-  const ready = { easy: null, hard: null };
-  const pending = { easy: false, hard: false };
+  const MODE_LIST = ['easy', 'hard', 'extreme'];
+  const GROUP = { easy: 0, hard: 0, extreme: 1 }; // 難易度ごとに使う Worker の番号
+  const ready = {};
+  const pending = {};
+  MODE_LIST.forEach((mode) => {
+    ready[mode] = null;
+    pending[mode] = false;
+  });
   let waitingFor = null; // ボタンを押して用意を待っている難易度
-  let worker = null;
+  const workers = [null, null];
 
   function prepare(mode) {
+    const worker = workers[GROUP[mode]];
     if (!worker || ready[mode] || pending[mode]) return;
     pending[mode] = true;
     worker.postMessage({ mode });
@@ -100,18 +109,24 @@
   }
 
   try {
-    worker = new Worker('/examples/16/worker.js');
-    worker.addEventListener('message', (e) => receive(e.data.mode, e.data.stage));
-    worker.addEventListener('error', () => {
-      worker.terminate();
-      worker = null;
-      pending.easy = pending.hard = false;
-      if (waitingFor) generateHere(waitingFor);
+    workers.forEach((_, g) => {
+      const worker = new Worker('/examples/16/worker.js');
+      worker.addEventListener('message', (e) => receive(e.data.mode, e.data.stage));
+      worker.addEventListener('error', () => {
+        // この Worker だけを止め、受け持つ難易度はこのスレッドで作る
+        worker.terminate();
+        workers[g] = null;
+        MODE_LIST.forEach((mode) => { if (GROUP[mode] === g) pending[mode] = false; });
+        if (waitingFor && GROUP[waitingFor] === g) generateHere(waitingFor);
+      });
+      workers[g] = worker;
     });
-    prepare('easy');
-    prepare('hard');
+    MODE_LIST.forEach(prepare);
   } catch {
-    worker = null;
+    workers.forEach((w, g) => {
+      if (w) w.terminate();
+      workers[g] = null;
+    });
   }
 
   function updateButtons() {
@@ -134,7 +149,7 @@
     }
     waitingFor = mode;
     updateButtons();
-    if (worker) prepare(mode); else generateHere(mode);
+    if (workers[GROUP[mode]]) prepare(mode); else generateHere(mode);
   }
 
   startButtons.forEach((b) => {
