@@ -6,13 +6,13 @@ const assert = require('node:assert/strict');
 const { R, checkComposition } = require('./helpers.js');
 
 const stages = [];
-for (let seed = 1; seed <= 200; seed++) {
+for (let seed = 1; seed <= 400; seed++) {
   const s = R.buildExtreme(R.makeRng(seed), R.MODES.extreme);
   if (s) stages.push(s);
 }
 
 test('ある程度の割合でステージができる', () => {
-  assert.ok(stages.length >= 10, `${stages.length}/200`);
+  assert.ok(stages.length >= 10, `${stages.length}/400`);
 });
 
 test('区間の並びは規則どおり', () => {
