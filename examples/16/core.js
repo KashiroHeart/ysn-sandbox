@@ -487,35 +487,69 @@
   // 状態は位置 4px・落下速度 1px/tick 刻みでまとめて重複を除く（まとめた分だけ道を見落とすことがあり、
   // そのときは回数を多めに見積もる。少なく見積もることはない）。
   // 戻り値: 回数。maxPresses 回までで届かなければ Infinity、状態数が maxStates を超えたら null。
+  //
+  // solveCuts は同じ探索で、難配置（区間の型のうち tier が 'hard' のもの）を飛ばせるかも確かめる。
+  // 状態ごとに「これまでに本体に触れた難配置」のビットを持たせて全状態を探し、
+  // あるビットが立たないままゴールに届いたら、その難配置には抜け道がある。
   const SOLVE_QX = 4;
   const SOLVE_QY = 4;
   const SOLVE_QV = 1;
   const SOLVE_MAX_TICKS = 60 * 120;
 
-  function solve(stage, maxPresses = Infinity, maxStates = 1500000) {
+  // 当たり判定の三角形が本体のマス（正方形として扱う）に重なる難配置のビット
+  function touchedBodies(bodyOf, x, y) {
+    const tri = hitbox(x, y);
+    const c0 = Math.max(0, Math.floor((x + HIT_LEFT) / TILE));
+    const c1 = Math.min(COLS - 1, Math.floor((x + HIT_RIGHT) / TILE));
+    const r0 = Math.max(0, Math.floor((y + HIT_TOP) / TILE));
+    const r1 = Math.min(ROWS - 1, Math.floor((y + HIT_BOTTOM) / TILE));
+    let m = 0;
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        const b = bodyOf[r * COLS + c];
+        if (b && overlaps(tri, squareAt(c, r))) m |= 1 << (b - 1);
+      }
+    }
+    return m;
+  }
+
+  // solve と solveCuts の共通の探索。cuts が無ければ solve の戻り値をそのまま返す。
+  // cuts = { bodyOf（マス → 難配置の番号 + 1。0 は本体でない）, full（全難配置のビット） } があれば
+  // { presses, avoid（本体に触れないままクリアできた難配置のビット）, overflow } を返す
+  function search(stage, maxPresses, maxStates, cuts) {
     const key = (x, y, vy, j, h, g) =>
       ((((((Math.round(x / SOLVE_QX) + 8) * 1024 + (Math.round(y / SOLVE_QY) + 8)) * 128
         + (Math.round(vy / SOLVE_QV) + 48)) * 4 + j) * 2 + h) * 2 + (g ? 1 : 0));
-    const seen = new Set();
-    const X = [], Y = [], V = [], J = [], H = [], G = [], T = [];
+    const seen = cuts ? new Map() : new Set();
+    const X = [], Y = [], V = [], J = [], H = [], G = [], T = [], M = [];
     const p = resetPlayer(stage, {});
     const input = { left: false, right: false, jump: false, queue: 0 };
-    const add = (h, t) => {
+    const add = (h, t, m) => {
       if (!(p.vy < -JUMP_RELEASE_MIN)) h = 0; // 押し続けて意味があるのは上昇中だけ
       const k = key(p.x, p.y, p.vy, p.jumps, h, p.grounded);
-      if (seen.has(k)) return -1;
-      seen.add(k);
-      X.push(p.x); Y.push(p.y); V.push(p.vy); J.push(p.jumps); H.push(h); G.push(p.grounded); T.push(t);
+      if (cuts) {
+        // 同じ状態を、触れた難配置がその一部だけのビットですでに見ていれば、その先も見たことになる
+        const list = seen.get(k);
+        if (list && list.some((s) => (s & ~m) === 0)) return -1;
+        if (list) list.push(m); else seen.set(k, [m]);
+      } else {
+        if (seen.has(k)) return -1;
+        seen.add(k);
+      }
+      X.push(p.x); Y.push(p.y); V.push(p.vy); J.push(p.jumps); H.push(h); G.push(p.grounded); T.push(t); M.push(m);
       return X.length - 1;
     };
-    add(0, 0);
+    let best = Infinity;
+    let avoid = 0;
+    const done = (overflow) => (cuts ? { presses: best, avoid, overflow } : overflow ? null : Infinity);
+    add(0, 0, cuts ? touchedBodies(cuts.bodyOf, p.x, p.y) : 0);
     let layer = [0];
     for (let presses = 0; presses <= maxPresses && layer.length; presses++) {
       const next = [];
       for (let qi = 0; qi < layer.length; qi++) {
         const i = layer[qi];
         if (T[i] >= SOLVE_MAX_TICKS) continue;
-        if (X.length > maxStates) return null;
+        if (X.length > maxStates) return done(true);
         for (let dir = -1; dir <= 1; dir++) {
           for (let mode = 0; mode <= 2; mode++) {
             if (mode === 1 && !H[i]) continue;          // 押し続けられるのは押し続けている最中だけ
@@ -526,9 +560,18 @@
             input.jump = mode !== 0;
             input.queue = mode === 2 ? 1 : 0;
             const r = step(stage, p, input);
-            if (r === 'clear') return presses + (mode === 2 ? 1 : 0);
             if (r === 'miss') continue;
-            const n = add(mode === 0 ? 0 : 1, T[i] + 1);
+            const m = cuts ? M[i] | touchedBodies(cuts.bodyOf, p.x, p.y) : 0;
+            if (r === 'clear') {
+              const count = presses + (mode === 2 ? 1 : 0);
+              if (!cuts) return count;
+              // ゴールに着いた状態は広げない。全難配置に抜け道が見つかったら、それ以上は探さなくてよい
+              best = Math.min(best, count);
+              avoid |= cuts.full & ~m;
+              if (avoid === cuts.full) return done(false);
+              continue;
+            }
+            const n = add(mode === 0 ? 0 : 1, T[i] + 1, m);
             if (n < 0) continue;
             (mode === 2 ? next : layer).push(n);
           }
@@ -536,7 +579,22 @@
       }
       layer = next;
     }
-    return Infinity;
+    return done(false);
+  }
+
+  function solve(stage, maxPresses = Infinity, maxStates = 1500000) {
+    return search(stage, maxPresses, maxStates, null);
+  }
+
+  // 戻り値: { presses（押下の最少回数。届かなければ Infinity）, bypassed（抜け道のある難配置の stage.sections での添字）,
+  //          overflow（状態数が maxStates を超えて打ち切った） }
+  function solveCuts(stage, maxStates = 1500000) {
+    const hard = [];
+    (stage.sections || []).forEach((s, i) => { if (s.tier === 'hard') hard.push(i); });
+    const bodyOf = new Uint8Array(COLS * ROWS);
+    hard.forEach((si, k) => stage.sections[si].body.forEach((cell) => { bodyOf[cell] = k + 1; }));
+    const r = search(stage, Infinity, maxStates, { bodyOf, full: (1 << hard.length) - 1 });
+    return { presses: r.presses, bypassed: hard.filter((_, k) => r.avoid & (1 << k)), overflow: r.overflow };
   }
 
   // ---------- 難易度つきの生成 ----------
@@ -589,6 +647,6 @@
     TILE, COLS, ROWS, STAGE_W, STAGE_H, EMPTY, BLOCK, DIAMOND, GOAL,
     TICK_MS, JUMP_BUFFER, HIT_BOTTOM, MODES,
     makeRng, newSeed, makeBuilder, decorate, buildStage, fallbackStage, generateStage, demoStage,
-    collides, touched, resetPlayer, step, solve,
+    collides, touched, resetPlayer, step, solve, solveCuts,
   };
 })();

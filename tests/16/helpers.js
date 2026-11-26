@@ -41,4 +41,27 @@ function snapshot() {
   return out;
 }
 
-module.exports = { R, hashGrid, snapshot };
+// 区間の型の行（記号は設計書 6 章）から、空のステージに置いたものを作る。左上を (ox, oy) にする。
+// cut のときは本体（o）を菱型で埋める
+function stageFromRows(rows, ox, oy, opt = { cut: false }) {
+  const grid = new Uint8Array(R.COLS * R.ROWS);
+  const body = [];
+  let start = null;
+  let goal = null;
+  rows.forEach((line, r) => [...line].forEach((ch, c) => {
+    const i = (r + oy) * R.COLS + c + ox;
+    if (ch === 'E' || ch === 'X' || ch === '=') grid[i] = R.BLOCK;
+    else if (ch === '#') grid[i] = R.DIAMOND;
+    else if (ch === 'o') {
+      body.push(i);
+      if (opt.cut) grid[i] = R.DIAMOND;
+    } else if (ch === 'S') start = { c: c + ox, r: r + oy };
+    else if (ch === 'G') {
+      goal = { c: c + ox, r: r + oy };
+      grid[i] = R.GOAL;
+    }
+  }));
+  return { grid, start, goal, body };
+}
+
+module.exports = { R, hashGrid, snapshot, stageFromRows };
