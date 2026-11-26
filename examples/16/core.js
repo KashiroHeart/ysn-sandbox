@@ -118,16 +118,19 @@
   // ---------- ステージ生成 ----------
   // 1. 足場を左右へ順につなぐ「経路」を作り、最初の足場に自機、最後の足場にゴールを置く。
   //    足場の間隔は 2 段ジャンプで届く範囲にとり、跳ぶのに使う空間は keep に印を付けて空けておく。
-  // 2. keep 以外の場所に、寄り道の足場・最下段の床・柱と菱型をばらまく。
+  // 2. keep 以外の場所に、寄り道の足場・最下段の床・柱と菱型をばらまく（decorate）。
   // 形の条件（足場数・ゴールの高さ）を満たさなければ null を返す。クリアできるかは solve で確かめる。
   const HEADROOM = 3; // 経路の足場の上に空けておく段数
   const ARC = 4;      // 足場から足場へ移るとき、高い方の足場よりさらに上に空けておく段数
 
-  function buildStage(rng, m) {
+  // 盤面・keep・経路の足場の一覧と、それを扱う道具をまとめたもの。buildStage と buildExtreme が使う
+  function makeBuilder(rng) {
     const int = (a, b) => a + Math.floor(rng() * (b - a + 1));
     const pick = (list) => list[int(0, list.length - 1)];
     const grid = new Uint8Array(COLS * ROWS);
     const keep = new Uint8Array(COLS * ROWS);
+    const plats = [];    // 経路の足場
+    const sections = []; // 置いた区間（Extreme だけが使う）
     const inside = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
     const free = (c, r) => inside(c, r) && grid[r * COLS + c] === EMPTY && !keep[r * COLS + c];
     const rowFree = (c, r, len) => {
@@ -143,68 +146,66 @@
       return true;
     };
     const mark = (z) => eachCell(z[0], z[1], z[2], z[3], (i) => { keep[i] = 1; });
-    const hasBlock = (z) => !eachCell(z[0], z[1], z[2], z[3], (i) => grid[i] !== BLOCK);
+    // z の中に空きでないマスがあるか。経路を作る時点の Easy / Hard の盤面には四角しかないので、
+    // 四角があるかを見るのと同じ結果になる。Extreme では区間の型の菱型も避ける
+    const occupied = (z) => !eachCell(z[0], z[1], z[2], z[3], (i) => grid[i] === EMPTY);
     const fillRow = (c, r, len) => {
       for (let i = 0; i < len; i++) grid[r * COLS + c + i] = BLOCK;
     };
-
-    // --- 経路 ---
-    const plats = [];
     const addPlat = (p) => {
       fillRow(p.c, p.r, p.len);
       mark([p.c, p.r - HEADROOM, p.c + p.len - 1, p.r - 1]);
       plats.push(p);
     };
 
-    const nextPlat = (p, dir) => {
+    // 足場 p から足場 n へ跳ぶときに空けておく場所
+    const linkZones = (p, n) => {
+      const left = p.c < n.c ? p : n;
+      const right = p.c < n.c ? n : p;
+      const lower = n.r > p.r ? n : p;
+      const top = Math.min(p.r, n.r);
+      return [
+        [left.c + left.len - 1, top - ARC, right.c, top - 1],         // 跳んで通る上空
+        [left.c + left.len, top, right.c - 1, lower.r - 1],           // 足場の間
+        [lower.c, top, lower.c + lower.len - 1, lower.r - 1],         // 低い方の足場の上
+      ];
+    };
+
+    // 足場 p の dir の向きに、次の足場の置き場所を探す
+    const nextPlat = (p, dir, m, stepDy = m.stepDy) => {
       for (let t = 0; t < 40; t++) {
-        const dy = pick(m.stepDy);
+        const dy = pick(stepDy);
         const gap = m.gap(dy, int);
         const len = int(m.len[0], m.len[1]);
         const n = { c: dir > 0 ? p.c + p.len + gap : p.c - gap - len, r: p.r + dy, len };
         if (n.c < 0 || n.c + n.len > COLS || n.r < HEADROOM + 1 || n.r > ROWS - 1) continue;
-        if (!rowFree(n.c, n.r, n.len) || hasBlock([n.c, n.r - HEADROOM, n.c + n.len - 1, n.r - 1])) continue;
-        const left = dir > 0 ? p : n;
-        const right = dir > 0 ? n : p;
-        const lower = n.r > p.r ? n : p;
-        const top = Math.min(p.r, n.r);
-        const zones = [
-          [left.c + left.len - 1, top - ARC, right.c, top - 1],         // 跳んで通る上空
-          [left.c + left.len, top, right.c - 1, lower.r - 1],           // 足場の間
-          [lower.c, top, lower.c + lower.len - 1, lower.r - 1],         // 低い方の足場の上
-        ];
-        if (zones.some(hasBlock)) continue;
+        if (!rowFree(n.c, n.r, n.len) || occupied([n.c, n.r - HEADROOM, n.c + n.len - 1, n.r - 1])) continue;
+        const zones = linkZones(p, n);
+        if (zones.some(occupied)) continue;
         return { plat: n, zones };
       }
       return null;
     };
 
-    const len0 = int(m.firstLen[0], m.firstLen[1]);
-    const fromLeft = rng() < 0.5;
-    const first = {
-      c: fromLeft ? int(0, 3) : int(COLS - len0 - 3, COLS - len0),
-      r: int(m.firstRow[0], m.firstRow[1]),
-      len: len0,
+    // 途中まで作った状態を覚えておき、うまくいかなかったら戻す
+    const snapshot = () => ({ grid: grid.slice(), keep: keep.slice(), plats: plats.length, sections: sections.length });
+    const restore = (s) => {
+      grid.set(s.grid);
+      keep.set(s.keep);
+      plats.length = s.plats;
+      sections.length = s.sections;
     };
-    addPlat(first);
-    let dir = fromLeft ? 1 : -1;
-    const want = int(m.plats[0], m.plats[1]);
-    // 壁に当たるなどして進めなくなったら、折り返せる難易度なら向きを変える。どちらにも進めなければ打ち切り
-    for (let fails = 0; plats.length < want && fails < (m.turn ? 2 : 1);) {
-      const step = nextPlat(plats[plats.length - 1], dir);
-      if (!step) { dir = -dir; fails++; continue; }
-      fails = 0;
-      step.zones.forEach(mark);
-      addPlat(step.plat);
-    }
-    if (plats.length < (m.minPlats || m.plats[0])) return null;
 
-    const last = plats[plats.length - 1];
-    const start = { c: first.c + int(0, first.len - 1), r: first.r - 1 };
-    const goal = { c: last.c + int(0, last.len - 1), r: last.r - (rng() < m.goalFloat ? 2 : 1) };
-    if (m.goalRise != null && start.r - goal.r < m.goalRise) return null;
-    grid[goal.r * COLS + goal.c] = GOAL;
-    mark([start.c - 2, start.r - 2, start.c + 2, start.r]); // 開始直後に菱型が触れないように
+    return {
+      rng, grid, keep, plats, sections,
+      int, pick, inside, free, rowFree, eachCell, mark, occupied, fillRow, addPlat,
+      linkZones, nextPlat, snapshot, restore,
+    };
+  }
+
+  // keep 以外の場所に、最下段の床・寄り道の足場・柱・菱型を置く
+  function decorate(b, m) {
+    const { rng, grid, keep, int, pick, inside, free, rowFree, fillRow } = b;
 
     // --- 最下段の床（穴あき） ---
     if (rng() < m.floor) {
@@ -263,9 +264,9 @@
         } else {
           const v = rng();
           if (v < 0.75) {
-            const b = pick(blocks);
-            c = b % COLS;
-            r = Math.floor(b / COLS) + (v < 0.55 ? -1 : 1);
+            const bi = pick(blocks);
+            c = bi % COLS;
+            r = Math.floor(bi / COLS) + (v < 0.55 ? -1 : 1);
           } else {
             c = int(0, COLS - 1);
             r = int(1, ROWS - 1);
@@ -276,7 +277,41 @@
         break;
       }
     }
+  }
 
+  function buildStage(rng, m) {
+    const b = makeBuilder(rng);
+    const { grid, int, plats } = b;
+
+    // --- 経路 ---
+    const len0 = int(m.firstLen[0], m.firstLen[1]);
+    const fromLeft = rng() < 0.5;
+    const first = {
+      c: fromLeft ? int(0, 3) : int(COLS - len0 - 3, COLS - len0),
+      r: int(m.firstRow[0], m.firstRow[1]),
+      len: len0,
+    };
+    b.addPlat(first);
+    let dir = fromLeft ? 1 : -1;
+    const want = int(m.plats[0], m.plats[1]);
+    // 壁に当たるなどして進めなくなったら、折り返せる難易度なら向きを変える。どちらにも進めなければ打ち切り
+    for (let fails = 0; plats.length < want && fails < (m.turn ? 2 : 1);) {
+      const step = b.nextPlat(plats[plats.length - 1], dir, m);
+      if (!step) { dir = -dir; fails++; continue; }
+      fails = 0;
+      step.zones.forEach(b.mark);
+      b.addPlat(step.plat);
+    }
+    if (plats.length < (m.minPlats || m.plats[0])) return null;
+
+    const last = plats[plats.length - 1];
+    const start = { c: first.c + int(0, first.len - 1), r: first.r - 1 };
+    const goal = { c: last.c + int(0, last.len - 1), r: last.r - (rng() < m.goalFloat ? 2 : 1) };
+    if (m.goalRise != null && start.r - goal.r < m.goalRise) return null;
+    grid[goal.r * COLS + goal.c] = GOAL;
+    b.mark([start.c - 2, start.r - 2, start.c + 2, start.r]); // 開始直後に菱型が触れないように
+
+    decorate(b, m);
     return { grid, start, goal };
   }
 
@@ -553,7 +588,7 @@
   self.Randactions = {
     TILE, COLS, ROWS, STAGE_W, STAGE_H, EMPTY, BLOCK, DIAMOND, GOAL,
     TICK_MS, JUMP_BUFFER, HIT_BOTTOM, MODES,
-    makeRng, newSeed, buildStage, fallbackStage, generateStage, demoStage,
+    makeRng, newSeed, makeBuilder, decorate, buildStage, fallbackStage, generateStage, demoStage,
     collides, touched, resetPlayer, step, solve,
   };
 })();
