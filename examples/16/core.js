@@ -114,6 +114,28 @@
       presses: [6, Infinity],
     },
   };
+  // Extreme は押下回数ではなく、区間の型（SECTIONS）とその並びで難しさを作る。骨組み（普通の足場のつなぎ方）は Hard と同じ。
+  // 区間は難配置 3〜5 個・癒し区間 1〜2 個。到達判定（solveCuts）で、クリアできて難配置を飛ばせないものを採る
+  MODES.extreme = {
+    firstRow: [15, ROWS - 2],
+    firstLen: [2, 3],
+    stepDy: MODES.hard.stepDy,
+    gap: MODES.hard.gap,
+    len: MODES.hard.len,
+    links: [0, 1],                    // 区間の前にはさむ普通の足場（区間の入口へのジャンプとは別）
+    turnLinks: [1, 2],                // 折り返した直後にはさむ普通の足場
+    turnStepDy: [-3, -3, -2, -2, -1], // そのときの段差（上へずらして前の列と重ならないように）
+    hard: [3, 5],
+    relief: [1, 2],
+    overhangRate: 0.5,                // ネズミ返しを狙う割合
+    floor: 0,
+    side: [2, 5],
+    pillars: [0, 2],
+    diamonds: [10, 16],
+    nearPath: 0.6,
+    maxTries: 12,                     // 検証まで進める候補の数
+    budgetMs: 20000,
+  };
 
   // ---------- 区間の型 ----------
   // Extreme の経路に組み込む、動ける範囲を絞った地形。右向き（左から入って右へ抜ける）で書き、左向きは左右を反転して使う。
@@ -219,6 +241,32 @@
       else if (ch === 'G') shape.goal = { c, r };
     }));
     return shape;
+  }
+
+  // Extreme の区間の並びを決める。難配置は 2 つまでしか続けず、癒し区間は続けず、最後は難配置にし、同じ種類は続けない。
+  // 折り返し専用の型（ネズミ返し）は含めない（buildExtreme が折り返すときに差し込む）
+  function planSections(rng, m) {
+    const int = (a, b) => a + Math.floor(rng() * (b - a + 1));
+    const kindsOf = (tier) => Object.keys(SECTIONS).filter((k) => SECTIONS[k].tier === tier && !SECTIONS[k].turn);
+    const relief = int(m.relief[0], m.relief[1]);
+    // 難配置は 2 つまでしか続けられないので、並べられる数は癒し区間の数で決まる
+    const hard = int(m.hard[0], Math.min(m.hard[1], 2 * (relief + 1)));
+    const ok = (t) => t[t.length - 1] === 'hard' && t.every((x, i) =>
+      !(x === 'relief' && t[i - 1] === 'relief') && !(x === 'hard' && t[i - 1] === 'hard' && t[i - 2] === 'hard'));
+    let tiers;
+    do {
+      tiers = [...Array(hard).fill('hard'), ...Array(relief).fill('relief')];
+      for (let i = tiers.length - 1; i > 0; i--) {
+        const j = int(0, i);
+        [tiers[i], tiers[j]] = [tiers[j], tiers[i]];
+      }
+    } while (!ok(tiers));
+    let prev = null;
+    return tiers.map((tier) => {
+      const kinds = kindsOf(tier).filter((k) => k !== prev);
+      prev = kinds[int(0, kinds.length - 1)];
+      return { tier, kind: prev };
+    });
   }
 
   // ---------- ステージ生成 ----------
@@ -751,7 +799,7 @@
 
   self.Randactions = {
     TILE, COLS, ROWS, STAGE_W, STAGE_H, EMPTY, BLOCK, DIAMOND, GOAL,
-    TICK_MS, JUMP_BUFFER, HIT_BOTTOM, MODES, SECTIONS, sectionShape,
+    TICK_MS, JUMP_BUFFER, HIT_BOTTOM, MODES, SECTIONS, sectionShape, planSections,
     makeRng, newSeed, makeBuilder, decorate, buildStage, fallbackStage, generateStage, demoStage,
     collides, touched, resetPlayer, step, solve, solveCuts,
   };

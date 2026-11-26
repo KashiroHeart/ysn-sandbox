@@ -105,4 +105,21 @@ function hypercubeFails(stage, plan, r, dir) {
   return fails;
 }
 
-module.exports = { R, hashGrid, snapshot, stageFromRows, mirrorRows, runPlan, hypercubeFails };
+// 区間の並びが設計書 7 章の規則を破っていれば、その名前を返す（空なら規則どおり）
+function checkComposition(list) {
+  const bad = new Set();
+  const hard = list.filter((x) => x.tier === 'hard').length;
+  const relief = list.filter((x) => x.tier === 'relief').length;
+  if (hard < 3 || hard > 5) bad.add('hard-count');
+  if (relief < 1 || relief > 2) bad.add('relief-count');
+  if (!list.length || list[list.length - 1].tier !== 'hard') bad.add('last-not-hard');
+  if (list.filter((x) => x.kind === 'overhang').length > 1) bad.add('overhang-count');
+  for (let i = 1; i < list.length; i++) {
+    if (list[i].tier === 'relief' && list[i - 1].tier === 'relief') bad.add('relief-run');
+    if (i >= 2 && [0, 1, 2].every((d) => list[i - d].tier === 'hard')) bad.add('hard-run');
+    if (list[i].kind === list[i - 1].kind) bad.add('same-kind');
+  }
+  return [...bad];
+}
+
+module.exports = { R, hashGrid, snapshot, stageFromRows, mirrorRows, runPlan, hypercubeFails, checkComposition };
