@@ -67,6 +67,48 @@ test('sectionShape は左向きで行と入口・出口を反転する', () => {
   assert.equal(l.h, rows.length);
 });
 
+// 型のすぐ外（型の中のマスに 8 近傍で接する、'-' か型の外のマス）。飾りの菱型が置かれうる
+function outerRing(rows) {
+  const inside = (c, r) => rows[r]?.[c] !== undefined && rows[r][c] !== '-';
+  const ring = [];
+  for (let r = -1; r <= rows.length; r++) {
+    for (let c = -1; c <= rows[0].length; c++) {
+      if (inside(c, r)) continue;
+      let near = false;
+      for (let dr = -1; dr <= 1 && !near; dr++) for (let dc = -1; dc <= 1 && !near; dc++) near = inside(c + dc, r + dr);
+      if (near) ring.push({ c, r });
+    }
+  }
+  return ring;
+}
+
+test('型のすぐ外に菱型が 1 つ来ても、幅の下限と出口までの押下回数は変わらない', () => each((kind, k, rows, i) => {
+  const ox = Math.floor((R.COLS - rows[0].length) / 2);
+  const oy = 6;
+  const shape = R.sectionShape(rows, 1);
+  const dir = k.turn ? -1 : 1;
+  // 出口の足場の、抜ける向きの端の上にゴールを置いたステージ（区間のテストのゴール G は消す）
+  const toExit = (extra) => {
+    const s = stageFromRows(rows, ox, oy);
+    s.grid[s.goal.r * R.COLS + s.goal.c] = R.EMPTY;
+    const c = ox + (dir > 0 ? shape.exit.c + shape.exit.len - 1 : shape.exit.c);
+    s.goal = { c, r: oy + shape.exit.r - 1 };
+    s.grid[s.goal.r * R.COLS + s.goal.c] = R.GOAL;
+    if (extra) s.grid[(oy + extra.r) * R.COLS + ox + extra.c] = R.DIAMOND;
+    return s;
+  };
+  const exitPresses = R.solve(toExit(null));
+  for (const cell of outerRing(rows)) {
+    const name = `${kind}[${i}] 菱型 (${cell.c},${cell.r})`;
+    const s = stageFromRows(rows, ox, oy);
+    s.grid[(oy + cell.r) * R.COLS + ox + cell.c] = R.DIAMOND;
+    assert.equal(hypercubeFails(s, PLANS[kind][i], k.tier === 'hard' ? 1 : 4, 1), 0, `${name} 幅`);
+    const exit = toExit(null).goal;
+    if (cell.c + ox === exit.c && cell.r + oy === exit.r) continue; // ゴールのマスそのものは除く
+    assert.equal(R.solve(toExit(cell)), exitPresses, `${name} 出口まで`);
+  }
+}));
+
 test('各型は左右どちら向きでも、中央でも端でも、クリアでき、幅の下限を満たす', () => each((kind, k, rows, i) => {
   for (const dir of [1, -1]) {
     for (const edge of [false, true]) {
