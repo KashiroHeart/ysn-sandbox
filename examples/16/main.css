@@ -143,7 +143,16 @@ body {
   font-size: clamp(14px, 3.6vw, 17px);
   letter-spacing: .05em;
 }
-.btn-start { min-width: 200px; height: 56px; font-size: 18px; }
+.start-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+.btn-start { min-width: 184px; height: 56px; font-size: 18px; }
+.btn-primary:disabled { cursor: default; }
+.btn-primary:disabled:not([aria-busy="true"]) { opacity: .5; }
+.btn-primary:disabled:hover { background: var(--blue); }
 
 .legend {
   display: flex;

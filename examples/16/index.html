@@ -15,6 +15,7 @@
 <!--
   画面は .app[data-screen] で切り替える（main.js）。
     title = タイトル（背景でランダムなステージを流す）、play = プレイ中、miss / clear = 結果ダイアログ
+  タイトルの Easy / Hard（data-mode）で難易度を選ぶ。ステージは worker.js が先回りして作る。
   ステージは canvas に描く。画面内の文言はすべて英語にする。
 -->
 <div class="app" data-screen="title">
@@ -29,7 +30,10 @@
     </div>
     <h1 class="game-title" id="game-title">Randactions</h1>
     <p class="tagline">A new random stage every run.</p>
-    <button type="button" class="btn btn-primary btn-start" id="start">Start Game</button>
+    <div class="start-buttons" role="group" aria-label="Start game">
+      <button type="button" class="btn btn-primary btn-start" data-mode="easy">Easy</button>
+      <button type="button" class="btn btn-primary btn-start" data-mode="hard">Hard</button>
+    </div>
     <ul class="legend">
       <li><span class="key">A</span><span class="key">D</span><span>Move</span></li>
       <li><span class="key key-wide">Space</span><span>Jump</span></li>
@@ -60,6 +64,7 @@
   <p class="noscript">JavaScript is required to play this game.</p>
 </noscript>
 
+<script src="/examples/16/core.js"></script>
 <script src="/examples/16/main.js"></script>
 </body>
 </html>
