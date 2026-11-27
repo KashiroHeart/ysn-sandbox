@@ -15,7 +15,7 @@
 <!--
   画面は .app[data-screen] で切り替える（main.js）。
     title = タイトル（背景でランダムなステージを流す）、play = プレイ中、miss / clear = 結果ダイアログ
-  タイトルの Easy / Hard（data-mode）で難易度を選ぶ。ステージは worker.js が先回りして作る。
+  タイトルの Easy / Hard / Extreme（data-mode）で難易度を選ぶ。ステージは worker.js が先回りして作る（Extreme は別の Worker）。
   ステージは canvas に描く。画面内の文言はすべて英語にする。
 -->
 <div class="app" data-screen="title">
@@ -33,6 +33,7 @@
     <div class="start-buttons" role="group" aria-label="Start game">
       <button type="button" class="btn btn-primary btn-start" data-mode="easy">Easy</button>
       <button type="button" class="btn btn-primary btn-start" data-mode="hard">Hard</button>
+      <button type="button" class="btn btn-primary btn-start" data-mode="extreme">Extreme</button>
     </div>
     <ul class="legend">
       <li><span class="key">A</span><span class="key">D</span><span>Move</span></li>

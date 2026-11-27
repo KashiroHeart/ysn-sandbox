@@ -44,3 +44,5 @@
 ## ローカル確認
 
 拡張子なし URL の確認には nginx を使う。設定の 443 側 `server` ブロックをローカル用にコピーし、`listen`・`http2`・`ssl_*` を外して `root` をリポジトリに向ける。 `python3 -m http.server` では拡張子なし URL を解決できない。
+
+#16 の生成・物理のテストは `node --test tests/16/*.test.js`（Node 22 以上、依存なし）。`tests/` は nginx の設定上公開されない。
